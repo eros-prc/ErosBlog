@@ -28,4 +28,3 @@ quarto preview
 quarto render
 quarto publish gh-pages
 ```
-# ErosBlog
