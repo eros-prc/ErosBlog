@@ -1,0 +1,828 @@
+[
+  {
+    "objectID": "survival.html",
+    "href": "survival.html",
+    "title": "生存分析",
+    "section": "",
+    "text": "这里整理 Kaplan-Meier 曲线、Log-rank 检验、Cox 比例风险模型、多重插补和生存预测相关内容。\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n肺癌数据生存分析\n\n\n缺失处理、多重插补与 Cox 比例风险模型\n\n\n\n生存分析\n\nR语言\n\n统计学笔记\n\n\n\n本文基于肺癌患者生存数据，完整展示从缺失值处理、多重插补到 Cox 比例风险模型构建的分析流程。\n\n\n\n\n\nMay 30, 2026\n\n\nEros\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "r.html",
+    "href": "r.html",
+    "title": "R 语言",
+    "section": "",
+    "text": "这里整理 R 语言基础、tidyverse、ggplot2、数据清洗、统计建模和可视化相关内容。\n\n\n\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html",
+    "href": "posts/survival/lung/index.html",
+    "title": "肺癌数据生存分析",
+    "section": "",
+    "text": "本文基于肺癌患者生存数据，完整展示了从缺失值处理、多重插补到Cox比例风险模型构建的全流程分析，探讨了性别、体能状态等因素对患者生存预后的影响，并通过PH假设检验完成模型优化，为生存分析方法的应用提供参考。"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#查看数据",
+    "href": "posts/survival/lung/index.html#查看数据",
+    "title": "肺癌数据生存分析",
+    "section": "1.1 查看数据",
+    "text": "1.1 查看数据\n\n\n代码\nlung %&gt;% head()\n\n\n  inst time status age sex ph.ecog ph.karno pat.karno meal.cal wt.loss\n1    3  306      2  74   1       1       90       100     1175      NA\n2    3  455      2  68   1       0       90        90     1225      15\n3    3 1010      1  56   1       0       90        90       NA      15\n4    5  210      2  57   1       1       90        60     1150      11\n5    1  883      2  60   1       0      100        90       NA       0\n6   12 1022      1  74   1       1       50        80      513       0\n\n\n\n\n代码\nlung %&gt;% \n  ggplot(\n    aes(\n      x=time,fill=factor(sex)\n        )\n    )+\n  geom_histogram()+\n  theme_classic2()\n\n\n\n\n\n\n\n\n\n\n观察直方图可以发现生存时间总体呈现一个看似偏态的分布，且男女生可能有较大差异。后期再进行检验"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#data-transform",
+    "href": "posts/survival/lung/index.html#data-transform",
+    "title": "肺癌数据生存分析",
+    "section": "1.2 data transform",
+    "text": "1.2 data transform\n观察到最终状态未为常见的0/1，而是1/2.进行修改\n\n\n代码\nlung_clean &lt;- \n  lung %&gt;% \n  mutate(\n    status=if_else(status==2,1,0)\n    #status = recode(status, `1` = 0, `2` = 1) 更简洁的写法\n  ) %&gt;% \n  as.tibble()\n\n\n\n\n\n变量名\n含义\n\n\n\n\ntime\n生存时间，单位：天\n\n\nstatus\n结局状态\n\n\nage\n年龄（岁）\n\n\nsex\n性别\n\n\ninst\n入组机构编号（1–16），多中心研究标识\n\n\nph.ecog\n医生评估 ECOG 体能状态（0–3，越高越差）\n\n\nph.karno\n医生评估 Karnofsky 功能评分（0–100，越高越好）\n\n\npat.karno\n患者自评 Karnofsky 评分\n\n\nmeal.cal\n每日摄入卡路里（营养状况）\n\n\nwt.loss\n最近 6 个月体重下降（磅）"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#缺失值统计",
+    "href": "posts/survival/lung/index.html#缺失值统计",
+    "title": "肺癌数据生存分析",
+    "section": "2.1 缺失值统计",
+    "text": "2.1 缺失值统计\n\n\n代码\nlung_clean %&gt;% \n  miss_var_summary()\n\n\n# A tibble: 10 × 3\n   variable  n_miss pct_miss\n   &lt;chr&gt;      &lt;int&gt;    &lt;num&gt;\n 1 meal.cal      47   20.6  \n 2 wt.loss       14    6.14 \n 3 pat.karno      3    1.32 \n 4 inst           1    0.439\n 5 ph.ecog        1    0.439\n 6 ph.karno       1    0.439\n 7 time           0    0    \n 8 status         0    0    \n 9 age            0    0    \n10 sex            0    0    \n\n\n\n可以看出meal.cal（每日摄入卡路里）为缺失率最高的的数据高达20.6%，在临床上几乎可以确定其为非随机缺失 MNAR，可能是由于病人病危无法进食等导致。可能和结果存在显著相关性，若直接剔除可能对结果产生较大影响。\nwt.loss（最近 6 个月体重下降）仅损失14个样本，可以推断其大概是随机缺失 MAR，可以选择mice插值\n其余缺失值都很少 ，可以直接删除或也使用插值法，对结果影响不大。"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#缺失值可视化",
+    "href": "posts/survival/lung/index.html#缺失值可视化",
+    "title": "肺癌数据生存分析",
+    "section": "2.2 缺失值可视化",
+    "text": "2.2 缺失值可视化\n\n\n代码\nlung_clean %&gt;% \n  gg_miss_upset()\n\n\n\n\n\n\n\n\n\n\n\n代码\np1 &lt;- \n  lung_clean %&gt;% \n  gg_miss_var()\np2 &lt;- \n  lung_clean %&gt;% \n  gg_miss_which()\np3 &lt;- \n  lung_clean %&gt;% \n    ggplot(aes(x=wt.loss,y=meal.cal))+\n  geom_miss_point()+theme_classic2()\n\n(p1|p2)/p3\n\n\n\n\n\n\n\n\n\n\n通过上图可以看出，缺失值基本都是单个出现，并没有显著关联性。即都是只有meal.cal（每日摄入卡路里）和wt.loss（最近 6 个月体重下降）单独缺失。\n缺失样本（红色）的wt.loss分布与无缺失样本的分布范围大致重合，没有出现 “缺失样本集中在wt.loss极高 / 极低区域” 的系统性偏差。"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#littles-missing-completely-at-random-mcar-test",
+    "href": "posts/survival/lung/index.html#littles-missing-completely-at-random-mcar-test",
+    "title": "肺癌数据生存分析",
+    "section": "2.3 Little’s missing completely at random (MCAR) test",
+    "text": "2.3 Little’s missing completely at random (MCAR) test\n\n\n代码\nlung_clean %&gt;% \n  mcar_test()\n\n\n# A tibble: 1 × 4\n  statistic    df p.value missing.patterns\n      &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;            &lt;int&gt;\n1      62.0    68   0.683                9\n\n\n\n\n\n\n\n\n\n\n列名\n结果\n含义\n\n\n\n\nstatistic\n61.97617\nLittle 检验的卡方统计量，用于和卡方分布比较计算 p 值\n\n\ndf\n68\n检验的自由度，由变量数和缺失模式数决定\n\n\np.value\n0.6826042\n检验的 p 值，核心结果\n\n\nmissing.patterns\n9\n数据中存在的不同缺失模式数量\n\n\n\n\n原假设 H₀：数据的缺失机制是 完全随机缺失（MCAR）\n备择假设 H₁：数据的缺失机制 不是 MCAR（即 MAR 或 MNAR）\n\n检验最后为模糊与0.68并不显著处于模糊域之中，无法接受也无法拒绝原假设。接下来通过观察图像和显著性检验来检测meal.cal（每日摄入卡路里）对结果有没有什么影响。"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#缺失值生存性分析",
+    "href": "posts/survival/lung/index.html#缺失值生存性分析",
+    "title": "肺癌数据生存分析",
+    "section": "2.4 缺失值生存性分析",
+    "text": "2.4 缺失值生存性分析\n\n\n代码\nlung_clean &lt;- \nlung_clean %&gt;% \n  mutate(\n    is_na=recode(\n      meal.cal,\n      .missing=\"缺失值\",\n      .default=\"未缺失\")\n  )\n\n\n\n\n代码\nfit &lt;- survfit(\n  formula = Surv(time, status) ~ is_na,\n  data = lung_clean\n)\n\nsv_p1 &lt;- \nggsurvplot(\n  fit,\n  pval = T, #p值\n  conf.int = T,  #置信区间\n  risk.table = TRUE, \n  risk.table.col = \"strata\", # 根据分层更改风险表颜色\n  linetype = \"strata\", # 根据分层更改线型\n  surv.median.line = \"hv\", # 同时显示垂直和水平参考线\n  ggtheme = theme_classic(), # 更改ggplot2的主题\n  palette = c(\"#E7B800\", \"#2E9FDF\"),\n  legend=\"none\",\n  title=\"生存函数\"\n  )\n\n  \nsv_p2 &lt;- \n  ggsurvplot(\n  fit,\n  #pval = T, #p值\n  conf.int = T,  #置信区间\n  #risk.table = TRUE, \n  risk.table.col = \"strata\", # 根据分层更改风险表颜色\n  linetype = \"strata\", # 根据分层更改线型\n  surv.median.line = \"hv\", # 同时显示垂直和水平参考线\n  ggtheme = theme_classic(), # 更改ggplot2的主题\n  palette = c(\"#E7B800\", \"#2E9FDF\"),\n  legend = \"none\",\n  fun =\"event\",\n  title=\"风险函数\")\n\n  \nsv_p3 &lt;- \n  ggsurvplot(\n  fit,\n  #pval = T, #p值\n  conf.int = T,  #置信区间\n  #risk.table = TRUE, \n  risk.table.col = \"strata\", # 根据分层更改风险表颜色\n  linetype = \"strata\", # 根据分层更改线型\n  surv.median.line = \"hv\", # 同时显示垂直和水平参考线\n  ggtheme = theme_classic(), # 更改ggplot2的主题\n  palette = c(\"#E7B800\", \"#2E9FDF\"),\n  legend = \"none\",\n  fun =\"cumhaz\",\n  title=\"风险累计函数\")\n\n# ----------------------\n# 关键1：定义图例提取函数 + 优化图例显示\n# ----------------------\nget_legend &lt;- function(ggplot_obj) {\n  tmp &lt;- ggplot_gtable(ggplot_build(ggplot_obj))\n  leg &lt;- which(sapply(tmp$grobs, function(x) x$name) == \"guide-box\")\n  tmp$grobs[[leg]]\n}\n\n# 提取图例并设置清晰标签（避免截断）\nlegend_plot &lt;- sv_p1$plot +\n  labs(color = \"分组\", linetype = \"分组\") +  # 图例标题\n  scale_color_manual(values = c(\"#E7B800\", \"#2E9FDF\"),labels = c(\"缺失值\", \"未缺失\")) +  # 完整标签名\n  scale_linetype_manual(values = c(\"solid\", \"dashed\"),labels = c(\"缺失值\", \"未缺失\"))\nlegend &lt;- get_legend(legend_plot + theme(legend.position = \"bottom\", \n                                         legend.key.width = unit(1.5, \"cm\")))  # 加宽图例键\n\n# ----------------------\n# 关键2：组合sv_p1的图 + 风险表（完整右侧图）\n# ----------------------\nsv_p1_complete &lt;- sv_p1$plot / sv_p1$table +\n  plot_layout(heights = c(0.8, 0.2))  # 图:表 = 4:1比例\n\n# ----------------------\n# 关键3：拼图 + 底部公共图例（最终布局）\n# ----------------------\n# 左边上下两图\nleft_col &lt;- sv_p2$plot / sv_p3$plot +\n  plot_layout(heights = c(0.5, 0.5))  # 上下图比例1:1\n\n# 左右两列组合\ntop_row &lt;- left_col | sv_p1_complete +\n  plot_layout(widths = c(0.5, 0.5))  # 左右列比例1:1\n\n# 最后添加底部图例\nfinal_plot &lt;- (top_row / legend) +\n  plot_layout(heights = c(0.9, 0.1))  # 图:图例 = 9:1比例\n\nfinal_plot\n\n\n\n\n\n\n\n\n\n\n虽然最终按照进食量是否为缺失值进行分组对比的生存曲线，经过log-rank检验，结果并不显著无法拒绝原假设，但是p=0.24，依然有很强的把握认为meal.cal缺失可能影响患者生存时间，因此对最终缺失值采取插补策略，并不直接删去。\n\n\n\n缺失组的中位生存时间约为 300 天，未缺失组的中位生存时间约为 270 天\n虚线标注了 50% 死亡事件的时间点，未缺失组更早达到 50% 死亡，和中位生存时间的差异一致"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#插值",
+    "href": "posts/survival/lung/index.html#插值",
+    "title": "肺癌数据生存分析",
+    "section": "2.5 插值",
+    "text": "2.5 插值\n\n2.5.1 补充知识：\n\n一般使用pmm是最好的选择\n\n\n\n数据存在强非线性 / 复杂交互效应 当变量间关系高度非线性（如 U 型关系）或存在复杂交互作用时，随机森林（rf） 或CART（cart） 可能更优，它们能捕捉 PMM 无法建模的非线性模式。 适用案例：肿瘤大小与生存时间呈非线性关系，且与治疗方式存在交互效应\n分类变量插值 PMM 仅适用于连续变量，分类变量必须选择对应方法： 二分类 → logreg（逻辑回归） 无序多分类 → polyreg（多项式回归） 有序多分类 → polr（比例优势模型）\n高维稀疏数据（如基因表达数据） 当变量数远大于样本数（p &gt;&gt; n）时，PMM 的回归模型可能不稳定，此时可考虑： rf（随机森林，对高维数据有天然优势） lda（线性判别分析，降维后插值）\n特殊研究设计（如加权抽样、纵向数据） 加权抽样数据 → midastouch（加权 PMM） 纵向数据 → mice的2l.norm（两水平正态模型）等专门方法\n\n因此本文选择如下方法：\n\n连续变量（meal.cal, wt.loss）：pmm\n分类变量（如 sex, ph.ecog）：logreg/删除\n\n\n\n2.5.2 具体操作\n\n\n代码\nimp &lt;- mice(\n  lung_clean,\n  method = \"pmm\", # 保持PMM不变\n  m = 5,\n  maxit = 15, # 增加迭代次数，让模型收敛更好\n  printFlag = FALSE\n)\n\nm1 &lt;- \nbwplot(\n  imp, \n  ~ meal.cal + wt.loss,\n  scales = list(x = list(relation = \"free\")),\n  col = c(\"#377eb8\", \"#e41a1c\"), # 标准红蓝配色\n  main = \"肺癌数据：观测值与插补值分布对比\",\n  ylab = \"变量取值\"\n)\n\nm2 &lt;- \ndensityplot(\n  imp, \n  ~ meal.cal + wt.loss,\n  col = c(\"#377eb8\", \"#e41a1c\"), # 标准红蓝配色\n  main = NULL,\n  ylab = \"变量取值\"\n)\n\nm3 &lt;- plot(\n  imp, \n  c(\"meal.cal\", \"wt.loss\"),\n  main = \"MICE 插补迭代收敛诊断\"\n)\n\ngrid.arrange(\n  m1, m2, \n  nrow = 2,\n  heights = c(2, 2)\n)\n\n\n\n\n\n\n\n\n\n\n\n代码\nm3\n\n\n\n\n\n\n\n\n\n\n\n代码\nm4 &lt;- \nstripplot(\n  imp,\n  meal.cal + wt.loss ~ .imp,\n  pch = 20,\n  cex = 1.2,\n  main = \"不同插补数据集中的插补值分布\"\n)\nm4\n\n\n\n\n\n\n\n\n\n\n收敛图：没有明显单调上升/下降趋势，整体可以接受；\n箱线图：meal.cal 和 wt.loss 插补值都在合理范围内；\n密度图：meal.cal 很好，wt.loss 波动稍大，但没有明显失败。\n插补值分布与原始观测值分布基本一致，没有明显异常，插补效果较好。\n\n\n\n代码\nxy1 &lt;- \n  xyplot(\n  imp,\n  meal.cal ~ age,\n  pch = 20,\n  cex = 1.1,\n  main = \"meal.cal 与 age 的插补关系检查\"\n)\n\nxy2 &lt;- \n  xyplot(\n  imp,\n  wt.loss ~ age,\n  pch = 20,\n  cex = 1.1,\n  main = \"wt.loss 与 age 的插补关系检查\"\n)\n\ngrid.arrange(\n  xy1, xy2, \n  ncol = 2\n)\n\n\n\n\n\n\n\n\n\n\nwt.loss 的插补值总体位于原始观测值分布范围内，未出现明显超出观测数据结构的异常点。但由于该变量本身波动较大，插补值在不同年龄段的离散程度较高，提示 wt.loss 的插补不确定性相对较大。\nmeal.cal 的插补值与原始观测值在年龄维度上的分布基本一致，未发现插补值在特定年龄段异常聚集或偏离，说明插补过程基本保留了 meal.cal 与 age 的关系。\n\n总体判断：\nMICE-PMM 插补结果整体合理。meal.cal 和 wt.loss 的插补值均落在原始观测值的合理范围内，且在不同插补数据集之间没有出现明显异常波动。meal.cal 的插补分布与原始数据较为一致，插补效果较好；wt.loss 的插补值也总体合理，但变量本身离散程度较高，插补不确定性相对更大。结合前面的密度图、箱线图和收敛图，可以认为当前插补结果基本可用于后续生存分析。"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#插值数据cox回归",
+    "href": "posts/survival/lung/index.html#插值数据cox回归",
+    "title": "肺癌数据生存分析",
+    "section": "3.1 插值数据cox回归",
+    "text": "3.1 插值数据cox回归\n\n\n代码\nfit_imp &lt;- with(\n  imp,\n  coxph(Surv(time, status) ~ meal.cal + wt.loss + age + sex + ph.karno + ph.ecog)\n)\n\npool_result &lt;- pool(fit_imp)\n\nsummary(pool_result)\n\n\n      term      estimate    std.error  statistic        df      p.value\n1 meal.cal -5.057225e-05 0.0002778551 -0.1820094  17.67109 0.8576469126\n2  wt.loss -9.042996e-03 0.0067027093 -1.3491553 111.93355 0.1800099217\n3      age  1.122052e-02 0.0098435229  1.1398882 134.81241 0.2563540858\n4      sex -6.107382e-01 0.1748515989 -3.4928946 145.99485 0.0006326109\n5 ph.karno  1.210083e-02 0.0093129473  1.2993556 156.54668 0.1957322086\n6  ph.ecog  7.049665e-01 0.1811989810  3.8905653 155.38765 0.0001479708"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#原数据cox回归",
+    "href": "posts/survival/lung/index.html#原数据cox回归",
+    "title": "肺癌数据生存分析",
+    "section": "3.2 原数据cox回归",
+    "text": "3.2 原数据cox回归\n\n\n代码\nfit_cc &lt;- coxph(\n  Surv(time, status) ~ meal.cal + wt.loss + age + sex + ph.karno + ph.ecog,\n  data = lung_clean,\n  na.action = na.omit\n)\n\nsummary(fit_cc)\n\n\nCall:\ncoxph(formula = Surv(time, status) ~ meal.cal + wt.loss + age + \n    sex + ph.karno + ph.ecog, data = lung_clean, na.action = na.omit)\n\n  n= 170, number of events= 123 \n   (因为不存在，58个观察量被删除了)\n\n               coef  exp(coef)   se(coef)      z Pr(&gt;|z|)    \nmeal.cal -5.028e-05  9.999e-01  2.570e-04 -0.196 0.844890    \nwt.loss  -1.136e-02  9.887e-01  7.573e-03 -1.501 0.133439    \nage       1.346e-02  1.014e+00  1.157e-02  1.163 0.244805    \nsex      -5.570e-01  5.729e-01  1.986e-01 -2.805 0.005039 ** \nph.karno  1.985e-02  1.020e+00  1.097e-02  1.809 0.070381 .  \nph.ecog   7.943e-01  2.213e+00  2.129e-01  3.731 0.000191 ***\n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\n         exp(coef) exp(-coef) lower .95 upper .95\nmeal.cal    0.9999     1.0001    0.9994    1.0005\nwt.loss     0.9887     1.0114    0.9741    1.0035\nage         1.0135     0.9866    0.9908    1.0368\nsex         0.5729     1.7454    0.3882    0.8456\nph.karno    1.0201     0.9803    0.9983    1.0422\nph.ecog     2.2129     0.4519    1.4580    3.3588\n\nConcordance= 0.636  (se = 0.029 )\nLikelihood ratio test= 25.78  on 6 df,   p=2e-04\nWald test            = 24.93  on 6 df,   p=4e-04\nScore (logrank) test = 25.43  on 6 df,   p=3e-04\n\n\n结论：为评估多重插补结果对后续 Cox 回归分析的影响，本文比较了多重插补后的 pooled Cox 模型与完整案例分析结果。结果显示，两种模型中各变量的回归系数方向基本一致，且显著变量保持一致。sex 和 ph.ecog 在两种模型中均具有统计学意义，其中 ph.ecog 的回归系数为正，提示 ECOG 评分越高，死亡风险越高；sex 的回归系数为负，提示女性相对于男性死亡风险较低。meal.cal、wt.loss 和 age 在两种模型中均未达到统计学显著性。\n完整案例分析删除了 58 个含缺失值的观测，而多重插补分析能够保留更多样本信息，并考虑插补带来的不确定性。总体来看，多重插补结果与完整案例分析结果一致性较好，说明当前 MICE-PMM 插补结果在模型层面具有较好的稳定性。\n\n\n代码\n#将imp转换为tibble数据\nlung_imp1 &lt;- complete(imp, 1) |&gt; \n  as_tibble()"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#cox假设检验ph检验",
+    "href": "posts/survival/lung/index.html#cox假设检验ph检验",
+    "title": "肺癌数据生存分析",
+    "section": "3.3 cox假设检验（PH检验）",
+    "text": "3.3 cox假设检验（PH检验）\n风险比假设：不同组之间的风险比 HR 随时间保持不变。\n若假设不成立：\n\n如果变量不是主要研究变量，可以保留并说明局限\n加入时间交互项\n分层 Cox 模型\n\n\n\n代码\nph_results &lt;- map_dfr(1:imp$m, function(i) {\n  \n  dat_i &lt;- complete(imp, i)\n  \n  fit_i &lt;- coxph(\n    Surv(time, status) ~ meal.cal + wt.loss + age + sex + ph.karno + ph.ecog,\n    data = dat_i\n  )\n  \n  ph_i &lt;- cox.zph(fit_i)\n  \n  as.data.frame(ph_i$table) %&gt;%\n    rownames_to_column(\"term\") %&gt;%\n    mutate(.imp = i) %&gt;%\n    select(.imp, term, chisq, df, p)\n})\n\nph_results\n\n\n   .imp     term       chisq df           p\n1     1 meal.cal  4.95672276  1 0.025989418\n2     1  wt.loss  0.09591023  1 0.756793846\n3     1      age  0.06084736  1 0.805161626\n4     1      sex  2.52704067  1 0.111909921\n5     1 ph.karno  6.20050285  1 0.012771402\n6     1  ph.ecog  1.73205880  1 0.188148183\n7     1   GLOBAL 15.03004257  6 0.020024334\n8     2 meal.cal  4.58789766  1 0.032198485\n9     2  wt.loss  0.06741135  1 0.795143822\n10    2      age  0.07169398  1 0.788886133\n11    2      sex  2.29216298  1 0.130028605\n12    2 ph.karno  6.10098190  1 0.013510679\n13    2  ph.ecog  1.77749380  1 0.182457375\n14    2   GLOBAL 14.37068331  6 0.025758675\n15    3 meal.cal  7.31332640  1 0.006844511\n16    3  wt.loss  0.05072414  1 0.821807967\n17    3      age  0.04603579  1 0.830110747\n18    3      sex  2.23584312  1 0.134843054\n19    3 ph.karno  5.60194488  1 0.017940551\n20    3  ph.ecog  1.56382602  1 0.211105896\n21    3   GLOBAL 15.69548975  6 0.015485154\n22    4 meal.cal 10.19509840  1 0.001408144\n23    4  wt.loss  0.11690449  1 0.732416381\n24    4      age  0.06728095  1 0.795337653\n25    4      sex  2.57301725  1 0.108700225\n26    4 ph.karno  6.01995526  1 0.014145005\n27    4  ph.ecog  1.76438083  1 0.184079027\n28    4   GLOBAL 20.27135456  6 0.002477552\n29    5 meal.cal  5.87566465  1 0.015351576\n30    5  wt.loss  0.55691139  1 0.455507376\n31    5      age  0.04720119  1 0.828007010\n32    5      sex  2.00682257  1 0.156592990\n33    5 ph.karno  5.78062161  1 0.016203810\n34    5  ph.ecog  1.66357742  1 0.197121000\n35    5   GLOBAL 15.18753459  6 0.018847208\n\n\n代码\nph_summary &lt;- ph_results %&gt;%\n  group_by(term) %&gt;%\n  summarise(\n    min_p = min(p, na.rm = TRUE),\n    median_p = median(p, na.rm = TRUE),\n    max_p = max(p, na.rm = TRUE),\n    n_sig = sum(p &lt; 0.05, na.rm = TRUE),\n    .groups = \"drop\"\n  )\n\nph_summary\n\n\n# A tibble: 7 × 5\n  term       min_p median_p  max_p n_sig\n  &lt;chr&gt;      &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt;\n1 GLOBAL   0.00248   0.0188 0.0258     5\n2 age      0.789     0.805  0.830      0\n3 meal.cal 0.00141   0.0154 0.0322     5\n4 ph.ecog  0.182     0.188  0.211      0\n5 ph.karno 0.0128    0.0141 0.0179     5\n6 sex      0.109     0.130  0.157      0\n7 wt.loss  0.456     0.757  0.822      0\n\n\n代码\n#备注：这几张是 Schoenfeld 残差图，用来判断 Cox 模型的比例风险假设 PH assumption 是否成立。\n#如果实线大致水平，说明该变量的 HR 基本不随时间变化，PH 假设较好；\n#如果实线随时间明显上升或下降，说明该变量效应随时间变化，可能违反 PH 假设。\n\n\n\n基于多重插补数据集分别进行 Cox 比例风险假设检验，并对各插补数据集的检验结果进行汇总。结果显示，完整模型的 GLOBAL 检验在 5 个插补数据集中均达到显著水平，提示模型整体存在比例风险假设违反。进一步分析各协变量发现，meal.cal 和 ph.karno 在所有插补数据集中均显示显著违反 PH 假设，而 age、wt.loss、sex 和 ph.ecog 均未显示明显违反。由于主要显著变量 sex 和 ph.ecog 的 PH 假设基本成立，模型核心结论仍具有一定稳定性。但 ph.karno 与 ph.ecog 均反映患者体能状态，且 ph.karno 稳定违反 PH 假设，因此后续可考虑去除 ph.karno，保留 ph.ecog 构建更简洁且假设更合理的模型。"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#去掉ph.karno的多重插补模型",
+    "href": "posts/survival/lung/index.html#去掉ph.karno的多重插补模型",
+    "title": "肺癌数据生存分析",
+    "section": "3.4 去掉ph.karno的多重插补模型",
+    "text": "3.4 去掉ph.karno的多重插补模型\n\n\n代码\nfit_imp_no_karno &lt;- with(\n  imp,\n  coxph(Surv(time, status) ~ meal.cal + wt.loss + age + sex + ph.ecog)\n)\n\npool_no_karno &lt;- pool(fit_imp_no_karno)\n\nsummary(pool_no_karno)\n\n\n      term      estimate    std.error  statistic        df      p.value\n1 meal.cal -5.543882e-05 0.0002739356 -0.2023790  18.09033 8.418790e-01\n2  wt.loss -8.745357e-03 0.0066119237 -1.3226645 122.08605 1.884193e-01\n3      age  9.626687e-03 0.0097718559  0.9851441 133.17518 3.263397e-01\n4      sex -5.857847e-01 0.1737813457 -3.3708148 147.39046 9.570487e-04\n5  ph.ecog  5.293791e-01 0.1209687254  4.3761648 156.44296 2.198378e-05\n\n\n\n\n代码\nph_results_no_karno &lt;- map_dfr(1:imp$m, function(i) {\n  \n  dat_i &lt;- complete(imp, i)\n  \n  fit_i &lt;- coxph(\n    Surv(time, status) ~ meal.cal + wt.loss + age + sex + ph.ecog,\n    data = dat_i\n  )\n  \n  ph_i &lt;- cox.zph(fit_i)\n  \n  as.data.frame(ph_i$table) %&gt;%\n    rownames_to_column(\"term\") %&gt;%\n    mutate(.imp = i) %&gt;%\n    select(.imp, term, chisq, df, p)\n})\n\nph_summary_no_karno &lt;- ph_results_no_karno %&gt;%\n  group_by(term) %&gt;%\n  summarise(\n    min_p = min(p, na.rm = TRUE),\n    median_p = median(p, na.rm = TRUE),\n    max_p = max(p, na.rm = TRUE),\n    n_sig = sum(p &lt; 0.05, na.rm = TRUE),\n    .groups = \"drop\"\n  )\n\nph_summary_no_karno\n\n\n# A tibble: 6 × 5\n  term       min_p median_p  max_p n_sig\n  &lt;chr&gt;      &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt;\n1 GLOBAL   0.00512   0.0488 0.0624     3\n2 age      0.646     0.663  0.697      0\n3 meal.cal 0.00133   0.0126 0.0287     5\n4 ph.ecog  0.155     0.161  0.178      0\n5 sex      0.0749    0.0911 0.113      0\n6 wt.loss  0.505     0.823  0.881      0\n\n\n\nph.karno 已经被去掉后，PH 问题明显改善； 但是 meal.cal 仍然在 5 个插补数据集中都违反 PH 假设。\n说明：ph.karno 确实是原模型 PH 假设问题的重要来源之一。去掉它后模型整体改善，但 meal.cal 仍然存在时间依赖问题。"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#去掉-meal.cal-的敏感性分析",
+    "href": "posts/survival/lung/index.html#去掉-meal.cal-的敏感性分析",
+    "title": "肺癌数据生存分析",
+    "section": "3.5 去掉 meal.cal 的敏感性分析",
+    "text": "3.5 去掉 meal.cal 的敏感性分析\n\n\n代码\nfit_imp_final2 &lt;- with(\n  imp,\n  coxph(Surv(time, status) ~ wt.loss + age + sex + ph.ecog)\n)\n\nsummary(pool(fit_imp_final2))\n\n\n     term     estimate   std.error statistic       df      p.value\n1 wt.loss -0.008323477 0.006467297 -1.287010 133.9970 2.003095e-01\n2     age  0.010581908 0.009145848  1.157018 158.9826 2.490006e-01\n3     sex -0.578275568 0.168143422 -3.439180 158.7796 7.454011e-04\n4 ph.ecog  0.527033358 0.120445755  4.375691 157.0138 2.198195e-05\n\n\n\n\n代码\nph_results_final2 &lt;- map_dfr(1:imp$m, function(i) {\n  \n  dat_i &lt;- complete(imp, i)\n  \n  fit_i &lt;- coxph(\n    Surv(time, status) ~ wt.loss + age + sex + ph.ecog,\n    data = dat_i\n  )\n  \n  ph_i &lt;- cox.zph(fit_i)\n  \n  as.data.frame(ph_i$table) %&gt;%\n    rownames_to_column(\"term\") %&gt;%\n    mutate(.imp = i) %&gt;%\n    select(.imp, term, chisq, df, p)\n})\n\nph_summary_final2 &lt;- ph_results_final2 %&gt;%\n  group_by(term) %&gt;%\n  summarise(\n    min_p = min(p, na.rm = TRUE),\n    median_p = median(p, na.rm = TRUE),\n    max_p = max(p, na.rm = TRUE),\n    n_sig = sum(p &lt; 0.05, na.rm = TRUE),\n    .groups = \"drop\"\n  )\n\nph_summary_final2\n\n\n# A tibble: 5 × 5\n  term     min_p median_p max_p n_sig\n  &lt;chr&gt;    &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt;\n1 GLOBAL  0.271    0.284  0.315     0\n2 age     0.683    0.687  0.696     0\n3 ph.ecog 0.158    0.168  0.174     0\n4 sex     0.0897   0.0928 0.103     0\n5 wt.loss 0.503    0.829  0.889     0\n\n\n\n基于多重插补后的 Cox 回归结果，最终模型纳入 wt.loss、age、sex 和 ph.ecog。结果显示，sex和 ph.ecog 与患者生存风险显著相关，而 wt.loss 和 age 未达到统计学显著性。若 sex 按原始 lung 数据编码为 1 = 男性、2 = 女性，则女性患者死亡风险低于男性。ph.ecog 的回归系数为正，提示 ECOG 评分越高，患者死亡风险越高。 进一步对各插补数据集分别进行比例风险假设检验，结果显示最终模型中所有协变量及整体 GLOBAL 检验均未显著违反 PH 假设，说明该模型较好地满足 Cox 比例风险模型的基本前提。与包含 meal.cal 和 ph.karno 的完整模型相比，简化模型在保留主要结论的同时改善了比例风险假设，因此可作为最终分析模型。"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#hr表",
+    "href": "posts/survival/lung/index.html#hr表",
+    "title": "肺癌数据生存分析",
+    "section": "3.6 HR表",
+    "text": "3.6 HR表\n\n\n代码\nsummary(pool(fit_imp_final2), conf.int = TRUE, exponentiate = TRUE)\n\n\n     term  estimate   std.error statistic       df      p.value     2.5 %\n1 wt.loss 0.9917111 0.006467297 -1.287010 133.9970 2.003095e-01 0.9791067\n2     age 1.0106381 0.009145848  1.157018 158.9826 2.490006e-01 0.9925468\n3     sex 0.5608647 0.168143422 -3.439180 158.7796 7.454011e-04 0.4023786\n4 ph.ecog 1.6938997 0.120445755  4.375691 157.0138 2.198195e-05 1.3352658\n     97.5 %  conf.low conf.high\n1 1.0044777 0.9791067 1.0044777\n2 1.0290592 0.9925468 1.0290592\n3 0.7817741 0.4023786 0.7817741\n4 2.1488576 1.3352658 2.1488576\n\n\n\n女性患者的死亡风险约为男性的 56.1%，即女性死亡风险显著低于男性。\nECOG 每升高 1 分，死亡风险约增加 69.4%。"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#最终-cox-模型的-森林图forest-plot",
+    "href": "posts/survival/lung/index.html#最终-cox-模型的-森林图forest-plot",
+    "title": "肺癌数据生存分析",
+    "section": "4.1 最终 Cox 模型的 森林图（forest plot）",
+    "text": "4.1 最终 Cox 模型的 森林图（forest plot）\n\n\n代码\nhr_table &lt;- summary(pool(fit_imp_final2), conf.int = TRUE, exponentiate = TRUE) %&gt;%\n  transmute(\n    term,\n    HR = estimate,\n    CI_low = `2.5 %`,\n    CI_high = `97.5 %`,\n    p.value\n  ) %&gt;%\n  mutate(\n    term = factor(term, levels = rev(c(\"wt.loss\", \"age\", \"sex\", \"ph.ecog\")))\n  )\n\nggplot(hr_table, aes(x = term, y = HR)) +\n  geom_point(size = 3) +\n  geom_errorbar(aes(ymin = CI_low, ymax = CI_high), width = 0.15) +\n  geom_hline(yintercept = 1, linetype = 2, color = \"red\") +\n  coord_flip() +\n  labs(\n    title = \"最终 Cox 模型的 HR 森林图\",\n    x = \"变量\",\n    y = \"Hazard Ratio (95% CI)\"\n  ) +\n  theme_bw(base_size = 14)\n\n\n\n\n\n\n\n\n\n这张图怎么解释：\n\n点在 1 左边：保护作用（HR &lt; 1）\n点在 1 右边：风险升高（HR &gt; 1）\n误差线跨过 1：通常不显著"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#kaplan-meier-生存曲线按-sex-分组",
+    "href": "posts/survival/lung/index.html#kaplan-meier-生存曲线按-sex-分组",
+    "title": "肺癌数据生存分析",
+    "section": "4.2 Kaplan-Meier 生存曲线：按 sex 分组",
+    "text": "4.2 Kaplan-Meier 生存曲线：按 sex 分组\n\n\n代码\nlung_imp1 &lt;- complete(imp, 1) %&gt;%\n  mutate(\n    sex_label = factor(sex, levels = c(1, 2), labels = c(\"Male\", \"Female\"))\n  )\n\nfit_sex &lt;- survfit(Surv(time, status) ~ sex_label, data = lung_imp1)\n\nggsurvplot(\n  fit_sex,\n  data = lung_imp1,\n  risk.table = TRUE,\n  pval = TRUE,\n  conf.int = TRUE,\n  palette = c(\"#E7B800\", \"#2E9FDF\"),\n  ggtheme = theme_classic(),\n  title = \"按性别分组的 Kaplan-Meier 生存曲线\",\n  xlab = \"随访时间\",\n  ylab = \"生存概率\",\n  legend.title = \"性别\")"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#kaplan-meier-生存曲线按-ph.ecog-分组",
+    "href": "posts/survival/lung/index.html#kaplan-meier-生存曲线按-ph.ecog-分组",
+    "title": "肺癌数据生存分析",
+    "section": "4.3 Kaplan-Meier 生存曲线：按 ph.ecog 分组",
+    "text": "4.3 Kaplan-Meier 生存曲线：按 ph.ecog 分组\n\n\n代码\nlung_imp1 &lt;- complete(imp, 1) %&gt;%\n  mutate(\n    ecog_group = case_when(\n      ph.ecog == 0 ~ \"0\",\n      ph.ecog == 1 ~ \"1\",\n      ph.ecog &gt;= 2 ~ \"2+\",\n      TRUE ~ NA_character_\n    ),\n    ecog_group = factor(ecog_group, levels = c(\"0\", \"1\", \"2+\"))\n  )\n\nfit_ecog &lt;- survfit(Surv(time, status) ~ ecog_group, data = lung_imp1)\n\nggsurvplot(\n  fit_ecog,\n  data = lung_imp1,\n  risk.table = TRUE,\n  pval = TRUE,\n  conf.int = TRUE,\n  ggtheme = theme_classic(),\n  title = \"按 ECOG 分组的 Kaplan-Meier 生存曲线\",\n  xlab = \"随访时间\",\n  ylab = \"生存概率\",\n  legend.title = \"ECOG 分组\"\n)"
+  },
+  {
+    "objectID": "posts/survival/lung/index.html#多重插补-ph-检验结果",
+    "href": "posts/survival/lung/index.html#多重插补-ph-检验结果",
+    "title": "肺癌数据生存分析",
+    "section": "4.4 多重插补 PH 检验结果",
+    "text": "4.4 多重插补 PH 检验结果\n\n\n代码\nph_plot_data &lt;- ph_summary_final2 %&gt;%\n  mutate(\n    term = factor(term, levels = rev(term)),\n    label = paste0(\"n_sig = \", n_sig)\n  )\n\nggplot(ph_plot_data, aes(y = term)) +\n  geom_vline(\n    xintercept = 0.05,\n    linetype = 2,\n    color = \"red\"\n  ) +\n  geom_linerange(\n    aes(xmin = min_p, xmax = max_p),\n    linewidth = 1\n  ) +\n  geom_point(\n    aes(x = median_p),\n    size = 3\n  ) +\n  geom_text(\n    aes(x = max_p, label = label),\n    hjust = -0.1,\n    size = 4\n  ) +\n  labs(\n    title = \"最终模型的多重插补 PH 假设检验汇总\",\n    subtitle = \"横线表示各插补数据集 p 值范围，点表示中位数 p 值\",\n    x = \"PH 检验 p 值\",\n    y = \"变量\"\n  ) +\n  coord_cartesian(xlim = c(0, max(ph_plot_data$max_p) * 1.2)) +\n  theme_bw(base_size = 14)"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html",
+    "href": "posts/philosophy/plato-symposium/index.html",
+    "title": "会饮篇",
+    "section": "",
+    "text": "柏拉图的《会饮篇》表面上写的是一场宴会。众人喝酒、谈话，并约定每个人都要发表一篇赞美 Eros 的演说。Eros 通常可以理解为“爱”或“爱神”，但在《会饮篇》中，它显然不只是普通意义上的恋爱感情。\n这篇对话最有意思的地方在于：每个人都在谈爱，但每个人眼中的爱都不一样。有人把爱看成勇敢的来源，有人把爱分成高低贵贱，有人把爱理解为和谐秩序，有人把爱说成寻找另一半，也有人把爱赞美为美德本身。\n不过，这些观点虽然精彩，却更像是一步步铺垫。真正把 Eros 提升到哲学高度的人，是苏格拉底。苏格拉底并没有简单赞美爱情，而是反过来追问：爱到底意味着什么？如果爱是对某物的追求，那么爱者是否正是因为缺少它，才会去爱它？\n也正是在这个问题上，《会饮篇》从一场关于爱情的谈话，变成了关于欲望、缺乏、美、善与灵魂上升的哲学讨论。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#从一场宴会开始eros-到底是什么",
+    "href": "posts/philosophy/plato-symposium/index.html#从一场宴会开始eros-到底是什么",
+    "title": "会饮篇",
+    "section": "",
+    "text": "柏拉图的《会饮篇》表面上写的是一场宴会。众人喝酒、谈话，并约定每个人都要发表一篇赞美 Eros 的演说。Eros 通常可以理解为“爱”或“爱神”，但在《会饮篇》中，它显然不只是普通意义上的恋爱感情。\n这篇对话最有意思的地方在于：每个人都在谈爱，但每个人眼中的爱都不一样。有人把爱看成勇敢的来源，有人把爱分成高低贵贱，有人把爱理解为和谐秩序，有人把爱说成寻找另一半，也有人把爱赞美为美德本身。\n不过，这些观点虽然精彩，却更像是一步步铺垫。真正把 Eros 提升到哲学高度的人，是苏格拉底。苏格拉底并没有简单赞美爱情，而是反过来追问：爱到底意味着什么？如果爱是对某物的追求，那么爱者是否正是因为缺少它，才会去爱它？\n也正是在这个问题上，《会饮篇》从一场关于爱情的谈话，变成了关于欲望、缺乏、美、善与灵魂上升的哲学讨论。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#斐德罗爱情让人追求勇敢与荣誉",
+    "href": "posts/philosophy/plato-symposium/index.html#斐德罗爱情让人追求勇敢与荣誉",
+    "title": "会饮篇",
+    "section": "斐德罗：爱情让人追求勇敢与荣誉",
+    "text": "斐德罗：爱情让人追求勇敢与荣誉\n斐德罗是第一个发言的人。他认为 Eros 是最古老、最值得尊敬的神之一，因为爱情能够激发人身上最好的品质。\n在他的理解里，爱会让人产生荣誉感。一个人在所爱之人面前，会更害怕表现得卑劣、懦弱和不光彩。相反，他会希望自己显得勇敢、高尚、值得被爱。所以，爱情在斐德罗这里不是单纯的情绪，而是一种道德力量。\n这种爱情观其实很接近我们今天常说的“好的爱情让人变好”。因为爱一个人，所以愿意承担责任；因为在意对方的目光，所以不愿意让自己堕落。斐德罗强调的不是爱情中的甜蜜，而是爱情带来的勇气和自我要求。\n不过，他的观点还停留在比较外在的层面。爱情让人勇敢，是因为人希望在爱人面前保持荣誉。也就是说，爱情的价值主要体现在社会评价和英雄行为上。它还没有深入到“人为什么会爱”这个问题。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#保萨尼亚斯爱情有高低之分",
+    "href": "posts/philosophy/plato-symposium/index.html#保萨尼亚斯爱情有高低之分",
+    "title": "会饮篇",
+    "section": "保萨尼亚斯：爱情有高低之分",
+    "text": "保萨尼亚斯：爱情有高低之分\n保萨尼亚斯的发言比斐德罗更进一步。他认为，不能笼统地赞美所有爱情，因为爱情本身有高低之分。\n他区分了两种爱：一种是低级的、只追求身体欲望的爱；另一种是高级的、重视灵魂和德性的爱。前一种爱容易短暂、功利、变化无常，只关注外貌和身体吸引；后一种爱则更稳定，因为它关注的是人的品格、思想和灵魂。\n这个观点很重要，因为它提醒我们：并不是所有打着“爱”的名义的关系都值得肯定。有些所谓的爱，本质上只是占有、欲望或短暂的新鲜感；而真正较高层次的爱，应该帮助人变得更有德性，更能认识自己，也更能成就对方。\n保萨尼亚斯的思想已经开始接近苏格拉底。因为他也意识到，爱情不能停留在身体层面，真正值得追求的是灵魂层面的美。不过，他依然主要是在区分爱情的类型，还没有进一步说明为什么人会从身体之爱走向灵魂之爱。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#厄律克西马库斯爱情是一种和谐的秩序",
+    "href": "posts/philosophy/plato-symposium/index.html#厄律克西马库斯爱情是一种和谐的秩序",
+    "title": "会饮篇",
+    "section": "厄律克西马库斯：爱情是一种和谐的秩序",
+    "text": "厄律克西马库斯：爱情是一种和谐的秩序\n厄律克西马库斯是一位医生，所以他的发言带有明显的医学和自然哲学色彩。他把 Eros 的范围扩展得很大，不只把它看作人与人之间的情感，还把它看成自然、身体、音乐和宇宙中的一种和谐力量。\n在他看来，健康的身体需要冷热、干湿等因素协调；音乐需要高低音之间形成和谐；四季运行也需要适当的秩序。同样，爱情也不是越强烈越好，而是需要节制、平衡和协调。\n这种爱情观比较理性。它不是从浪漫出发，而是从秩序出发。厄律克西马库斯提醒我们，爱如果没有节制，就可能变成混乱；欲望如果没有秩序，就可能伤害自己和他人。真正好的爱，应该像健康的身体和和谐的音乐一样，让不同部分达到平衡。\n不过，这种观点也有局限。它把爱情说得很宏大、很有秩序，却少了一点具体的人性冲突。现实中的爱往往并不总是和谐的，它可能包含渴望、痛苦、嫉妒、失控和自我矛盾。这个部分要到后面阿尔喀比亚德出场时才会被重新揭示出来。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#阿里斯托芬爱情是寻找失去的另一半",
+    "href": "posts/philosophy/plato-symposium/index.html#阿里斯托芬爱情是寻找失去的另一半",
+    "title": "会饮篇",
+    "section": "阿里斯托芬：爱情是寻找失去的另一半",
+    "text": "阿里斯托芬：爱情是寻找失去的另一半\n阿里斯托芬的发言最有故事感，也最接近普通人对爱情的想象。他讲了一个著名的神话：人最初并不是现在这样，而是完整的圆形生命。后来因为人类冒犯神灵，被宙斯劈成两半。于是，每个人都在世界上寻找自己失去的另一半。\n在这个故事里，爱情的本质就是对完整的渴望。人之所以爱，是因为觉得自己不完整；遇到某个人时，仿佛找回了失去的部分，于是希望与对方重新结合。\n这种爱情观非常浪漫。它解释了为什么爱情常常带有一种强烈的命运感：好像某个人不是偶然出现的，而是本来就应该属于自己。它也解释了为什么人在爱情中会渴望亲密、陪伴和融合。\n但从苏格拉底的角度看，阿里斯托芬的观点还不够。因为它把爱情理解为寻找“自己的另一半”，重点仍然是让自己重新完整。这样的爱虽然动人，却容易把对方变成满足自我缺失的对象。苏格拉底后面要提出的，是一种更高层次的爱：爱不是只为了补全自己，而是为了通过美去追求善和不朽。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#阿伽通爱情是美丽年轻与善",
+    "href": "posts/philosophy/plato-symposium/index.html#阿伽通爱情是美丽年轻与善",
+    "title": "会饮篇",
+    "section": "阿伽通：爱情是美丽、年轻与善",
+    "text": "阿伽通：爱情是美丽、年轻与善\n阿伽通的发言最华丽，也最像一篇正式的赞美诗。他把 Eros 描绘成最年轻、最美丽、最温柔、最善良的神。在他看来，爱本身就是美的，它带来智慧、勇敢、节制和正义。\n阿伽通的爱情观代表了人们对爱情最理想化的一面。人在爱中会感到世界变得柔和，语言变得诗意，生活变得明亮。爱情似乎天然与美好、青春、幸福联系在一起。\n但是，正是这种过度赞美，引出了苏格拉底的反问。苏格拉底并不满足于把 Eros 说成“美的”“善的”。他要问的是：如果 Eros 是对美的爱，那么它本身是否已经拥有美？如果它已经拥有美，为什么还要追求美？\n这个问题非常关键。因为它直接推翻了阿伽通式的赞美。苏格拉底要说明的是：Eros 并不是美本身，而是对美的渴望。它不是圆满，而是因为缺乏圆满，所以不断追求。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#苏格拉底eros-的本质不是拥有而是追求",
+    "href": "posts/philosophy/plato-symposium/index.html#苏格拉底eros-的本质不是拥有而是追求",
+    "title": "会饮篇",
+    "section": "苏格拉底：Eros 的本质不是拥有，而是追求",
+    "text": "苏格拉底：Eros 的本质不是拥有，而是追求\n苏格拉底的发言是《会饮篇》的核心。他一开始并没有像前面几个人那样直接赞美 Eros，而是用追问的方式改变了整个讨论方向。\n他的基本问题是：爱是不是总是爱某个对象？如果一个人爱某物，那么他是不是还没有完全拥有这个东西？\n这个问题看似简单，却非常有力量。比如，一个人渴望智慧，正说明他还不完全智慧；一个人追求美，正说明他还没有真正拥有美。如果 Eros 是对美的爱，那么 Eros 本身就不能说是完全美的。它之所以爱美，恰恰是因为它缺少美。\n这样一来，Eros 的形象就和阿伽通所说的完全不同了。阿伽通认为 Eros 是完美的神，而苏格拉底认为 Eros 不是完满者，而是追求者。它既不是彻底贫乏，也不是完全富足，而是处在二者之间。\n这也是苏格拉底观点最深刻的地方：爱不是已经拥有，而是意识到自己没有；爱不是满足，而是渴望；爱不是终点，而是一种向上的运动。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#狄奥提玛eros-介于贫乏与富足之间",
+    "href": "posts/philosophy/plato-symposium/index.html#狄奥提玛eros-介于贫乏与富足之间",
+    "title": "会饮篇",
+    "section": "狄奥提玛：Eros 介于贫乏与富足之间",
+    "text": "狄奥提玛：Eros 介于贫乏与富足之间\n苏格拉底接着借女祭司狄奥提玛之口，讲出了更完整的 Eros 理论。\n狄奥提玛认为，Eros 不是神，而是介于神与人之间的精灵。神是完满的，不需要追求；完全无知的人也不会追求智慧，因为他甚至不知道自己无知。真正会追求智慧的人，处在中间状态：他知道自己缺少智慧，所以才会渴望智慧。\nEros 正是这种中间状态的象征。\n狄奥提玛还讲到 Eros 的出身：它是“贫乏”和“富足”的孩子。因此，Eros 一方面贫乏、不满足、总是缺少某种东西；另一方面又机智、勇敢、善于追求，永远想办法靠近美好的事物。\n这个解释非常形象。爱情为什么常常既让人幸福，又让人痛苦？因为爱本身就是缺乏与追求的结合。一个人因为缺少，所以渴望；因为渴望，所以行动；因为行动，所以可能接近更高的东西。\n在这里，苏格拉底其实把爱情和哲学联系起来了。哲学也是一种处在无知和智慧之间的状态。哲学家不是已经拥有智慧的人，而是爱智慧、追求智慧的人。正因为如此，Eros 和哲学有着相似的结构：它们都不是占有，而是追求。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#爱真正追求的是什么",
+    "href": "posts/philosophy/plato-symposium/index.html#爱真正追求的是什么",
+    "title": "会饮篇",
+    "section": "爱真正追求的是什么？",
+    "text": "爱真正追求的是什么？\n在狄奥提玛看来，人表面上爱美，实际上追求的是善。更准确地说，人希望“善永远属于自己”。\n这句话让爱情的意义变得更深。普通爱情往往表现为对某个人的喜欢、迷恋或占有，但苏格拉底认为，这些只是爱情的表层。更深层的爱，是人对美好事物的追求，是希望自己能够拥有善，并且让这种善持续下去。\n因此，Eros 和“不朽”有关。\n人是有限的，会衰老，也会死亡。但人又不甘心完全消失，所以人会通过不同方式追求不朽。身体层面上，人通过生育延续生命；精神层面上，人通过思想、作品、教育、制度和美德延续自己。\n这就把爱情从个人关系提升到了生命意义的层面。爱不是简单地“我想和你在一起”，而是人在有限生命中对永恒、美好和不朽的追求。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#爱的阶梯从身体之美到美本身",
+    "href": "posts/philosophy/plato-symposium/index.html#爱的阶梯从身体之美到美本身",
+    "title": "会饮篇",
+    "section": "爱的阶梯：从身体之美到美本身",
+    "text": "爱的阶梯：从身体之美到美本身\n苏格拉底观点中最重要的部分，是狄奥提玛提出的“爱的阶梯”。\n人最初往往从爱一个具体的美丽身体开始。这是爱情最普通、最自然的起点。一个人被另一个人的外貌、气质或身体吸引，于是产生爱慕。\n但真正的爱不能停在这里。一个人应该进一步认识到，美并不只存在于某一个身体之中。许多身体都可以是美的，因此他会从迷恋一个身体，走向欣赏所有身体中的美。\n再往上，他会发现灵魂之美比身体之美更重要。一个人的思想、品格、勇气、节制和智慧，比外貌更持久，也更值得珍视。\n继续上升之后，他会看到制度、法律、知识和思想中的美。最后，他不再只是爱某个具体的人，也不只是爱某种具体的美，而是抵达对“美本身”的认识。\n这就是柏拉图式爱情最核心的地方：具体的爱情不是被否定，而是被看作通向更高之美的起点。身体之美不是错误，但如果人只停留在身体吸引上，就没有真正理解 Eros 的意义。真正的 Eros 应该推动灵魂上升，让人从具体的美走向普遍的美，从感性的爱走向理性的理解。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#苏格拉底爱情观的核心爱一个人是为了走向更高的美",
+    "href": "posts/philosophy/plato-symposium/index.html#苏格拉底爱情观的核心爱一个人是为了走向更高的美",
+    "title": "会饮篇",
+    "section": "苏格拉底爱情观的核心：爱一个人，是为了走向更高的美",
+    "text": "苏格拉底爱情观的核心：爱一个人，是为了走向更高的美\n如果把苏格拉底的爱情观概括出来，我觉得可以这样说：爱不是占有一个人，而是通过一个人被美所引导。\n这和普通恋爱观有很大不同。现实中我们常常把爱情理解成两个人之间的关系：我喜欢你，你是否喜欢我；我们能不能在一起；这段关系能不能稳定。但苏格拉底更关心的是：这个爱有没有让灵魂向上？它有没有让人认识更高的美、善和智慧？\n在他的观点里，具体的人当然重要。因为我们往往正是通过某一个具体的人，第一次强烈地感受到美。可是，如果爱只停留在“我要拥有这个人”，那它就容易变成狭隘的欲望。真正更高的爱，是从这个人身上看见美，再通过这种美走向更广阔的精神世界。\n所以，苏格拉底并不是简单反对恋爱，也不是否定身体吸引。他只是认为，爱不能停在最低层次。好的爱情应该让人变得更清醒、更自由、更接近智慧，而不是让人沉溺在占有、嫉妒和欲望之中。"
+  },
+  {
+    "objectID": "posts/philosophy/plato-symposium/index.html#阿尔喀比亚德现实中的爱情充满矛盾",
+    "href": "posts/philosophy/plato-symposium/index.html#阿尔喀比亚德现实中的爱情充满矛盾",
+    "title": "会饮篇",
+    "section": "阿尔喀比亚德：现实中的爱情充满矛盾",
+    "text": "阿尔喀比亚德：现实中的爱情充满矛盾\n在苏格拉底讲完之后，阿尔喀比亚德突然闯入宴会。他的出现非常重要，因为他把前面抽象的爱情理论重新拉回到了现实。\n阿尔喀比亚德讲述了自己对苏格拉底的迷恋。他被苏格拉底吸引，渴望接近苏格拉底，甚至希望用自己的美貌换取苏格拉底的智慧。但苏格拉底没有按照普通欲望的方式回应他。\n阿尔喀比亚德的爱是复杂的。他既崇拜苏格拉底，又感到挫败；既被苏格拉底的智慧吸引，又无法完全摆脱自己的虚荣和欲望。他的出现说明，现实中的 Eros 并不总是高尚、纯粹和理性的。爱也可能让人痛苦、嫉妒、失控，甚至看见自己内心的不自由。\n但这恰恰反过来证明了苏格拉底观点的重要性。Eros 本身只是一种力量，它可以把人拉向更高处，也可以让人陷入混乱。关键在于，人能不能把爱的冲动转化为自我认识和精神提升。\n苏格拉底像一面镜子，让阿尔喀比亚德看见自己的缺乏。也正因为如此，苏格拉底本人几乎成为 Eros 的化身：他不满足别人表面的欲望，而是不断唤醒别人对智慧和美德的追求。"
+  },
+  {
+    "objectID": "modeling.html",
+    "href": "modeling.html",
+    "title": "统计建模",
+    "section": "",
+    "text": "这里整理线性回归、Logistic 回归、广义线性模型、模型诊断、变量选择和预测建模相关内容。\n\n\n\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "journal.html",
+    "href": "journal.html",
+    "title": "Mood Journal",
+    "section": "",
+    "text": "这里不追求每天都很精彩，只记录普通日子里的状态、情绪和一点点继续往前走的证据。\n\n公开展示心情数据，谨慎公开日志正文。真正隐私的内容建议只放本地，不要上传到公开 GitHub 仓库。\n\n\n\n记录规则\n\n心情：1 到 5 分\n精力：1 到 5 分\n每天只写一句标题也算记录\n重要的是长期留下痕迹"
+  },
+  {
+    "objectID": "journal.html#mood-journal",
+    "href": "journal.html#mood-journal",
+    "title": "Mood Journal",
+    "section": "",
+    "text": "这里不追求每天都很精彩，只记录普通日子里的状态、情绪和一点点继续往前走的证据。\n\n公开展示心情数据，谨慎公开日志正文。真正隐私的内容建议只放本地，不要上传到公开 GitHub 仓库。"
+  },
+  {
+    "objectID": "journal.html#心情热力图",
+    "href": "journal.html#心情热力图",
+    "title": "Mood Journal",
+    "section": "心情热力图",
+    "text": "心情热力图"
+  },
+  {
+    "objectID": "journal.html#最近状态",
+    "href": "journal.html#最近状态",
+    "title": "Mood Journal",
+    "section": "最近状态",
+    "text": "最近状态"
+  },
+  {
+    "objectID": "journal.html#最近记录",
+    "href": "journal.html#最近记录",
+    "title": "Mood Journal",
+    "section": "最近记录",
+    "text": "最近记录"
+  },
+  {
+    "objectID": "journal.html#日志正文",
+    "href": "journal.html#日志正文",
+    "title": "Mood Journal",
+    "section": "日志正文",
+    "text": "日志正文\n\n\n🔒 轻度密码解锁\n\n\n这个密码解锁只是静态博客里的前端隐藏，适合放普通生活碎片，不适合放真正隐私内容。\n\n\n 解锁\n\n\n\n\n\n\n2026-06-30｜给博客加一个心情日志\n今天给博客加了一个日志页面，以后可以像 GitHub 贡献图一样看到每天的心情。感觉这个设计还挺适合我：不用每天写很多话，哪怕只写一句，也算留下了那天活过的证据。\n\n\n2026-06-29｜有点累但没有放弃\n今天有点累，事情也比较杂，但还是往前推进了一点点。虽然鼠鼠经常崩溃，但鼠鼠也确实没有停下。"
+  },
+  {
+    "objectID": "journal.html#怎么更新每天心情",
+    "href": "journal.html#怎么更新每天心情",
+    "title": "Mood Journal",
+    "section": "怎么更新每天心情",
+    "text": "怎么更新每天心情\n以后每天只需要打开 assets/data/mood.csv，按下面格式加一行：\n2026-07-01,4,3,今天状态还不错,生活|学习\n字段含义：\n\n\n\n字段\n含义\n\n\n\n\ndate\n日期\n\n\nmood\n心情分数，1 到 5\n\n\nenergy\n精力分数，1 到 5\n\n\ntitle\n当天一句话标题\n\n\ntags\n标签，用 | 分隔"
+  },
+  {
+    "objectID": "docs/趣味部件维护说明.html",
+    "href": "docs/趣味部件维护说明.html",
+    "title": "趣味部件维护说明",
+    "section": "",
+    "text": "本项目在首页和全站增加了几个轻量互动部件，主要文件如下：\nindex.qmd                         首页结构\nassets/css/styles.css             首页卡片、Bento、进度条等样式\nassets/js/site-widgets.js         随机语录、随机文章、阅读进度条、首页心情预览\nassets/js/site-widgets-loader.html 全站脚本加载器\n\n\n\n首页 Hero 区域\n当前状态卡片\n今日一句随机语录\nMood Journal 首页小预览\n学习进度条\nBento Grid 内容导航\n标签云\n随机文章按钮\n全站阅读进度条\n\n\n\n\n打开：\nassets/js/site-widgets.js\n找到：\nconst quotes = [ ... ];\n直接增删句子即可。\n\n\n\n打开：\nassets/js/site-widgets.js\n找到：\nconst randomLinks = [ ... ];\n新增文章时，可以按下面格式加一条：\n{ title: \"文章标题\", href: \"posts/分类/文章目录/\" }\n\n\n\n打开首页：\nindex.qmd\n找到：\n&lt;i style=\"--p: 78%\"&gt;&lt;/i&gt;\n把百分比改掉即可。\n\n\n\n打开：\nindex.qmd\n找到：\n&lt;div class=\"bento-grid\"&gt;\n在里面修改卡片标题、说明和链接。\n\n\n\n\n这些部件都是静态网页前端功能，不需要后端。\n如果发布到 GitHub Pages，建议先运行 quarto preview 确认页面正常。\n如果随机文章按钮跳转不对，优先检查 assets/js/site-widgets.js 里的 href 是否写对。"
+  },
+  {
+    "objectID": "docs/趣味部件维护说明.html#已加入的部件",
+    "href": "docs/趣味部件维护说明.html#已加入的部件",
+    "title": "趣味部件维护说明",
+    "section": "",
+    "text": "首页 Hero 区域\n当前状态卡片\n今日一句随机语录\nMood Journal 首页小预览\n学习进度条\nBento Grid 内容导航\n标签云\n随机文章按钮\n全站阅读进度条"
+  },
+  {
+    "objectID": "docs/趣味部件维护说明.html#修改随机语录",
+    "href": "docs/趣味部件维护说明.html#修改随机语录",
+    "title": "趣味部件维护说明",
+    "section": "",
+    "text": "打开：\nassets/js/site-widgets.js\n找到：\nconst quotes = [ ... ];\n直接增删句子即可。"
+  },
+  {
+    "objectID": "docs/趣味部件维护说明.html#修改随机文章按钮",
+    "href": "docs/趣味部件维护说明.html#修改随机文章按钮",
+    "title": "趣味部件维护说明",
+    "section": "",
+    "text": "打开：\nassets/js/site-widgets.js\n找到：\nconst randomLinks = [ ... ];\n新增文章时，可以按下面格式加一条：\n{ title: \"文章标题\", href: \"posts/分类/文章目录/\" }"
+  },
+  {
+    "objectID": "docs/趣味部件维护说明.html#修改学习进度条",
+    "href": "docs/趣味部件维护说明.html#修改学习进度条",
+    "title": "趣味部件维护说明",
+    "section": "",
+    "text": "打开首页：\nindex.qmd\n找到：\n&lt;i style=\"--p: 78%\"&gt;&lt;/i&gt;\n把百分比改掉即可。"
+  },
+  {
+    "objectID": "docs/趣味部件维护说明.html#修改首页分类卡片",
+    "href": "docs/趣味部件维护说明.html#修改首页分类卡片",
+    "title": "趣味部件维护说明",
+    "section": "",
+    "text": "打开：\nindex.qmd\n找到：\n&lt;div class=\"bento-grid\"&gt;\n在里面修改卡片标题、说明和链接。"
+  },
+  {
+    "objectID": "docs/趣味部件维护说明.html#注意",
+    "href": "docs/趣味部件维护说明.html#注意",
+    "title": "趣味部件维护说明",
+    "section": "",
+    "text": "这些部件都是静态网页前端功能，不需要后端。\n如果发布到 GitHub Pages，建议先运行 quarto preview 确认页面正常。\n如果随机文章按钮跳转不对，优先检查 assets/js/site-widgets.js 里的 href 是否写对。"
+  },
+  {
+    "objectID": "docs/日志功能修改说明.html",
+    "href": "docs/日志功能修改说明.html",
+    "title": "日志功能修改说明",
+    "section": "",
+    "text": "本项目已经新增日志板块，并按照整理后的目录结构存放相关文件。\n\n\n\njournal.qmd：日志首页。\nassets/data/mood.csv：心情热力图数据。\nassets/js/mood-heatmap.js：读取 CSV 并生成热力图。\nassets/css/styles.css：全站样式和日志页样式。\n_templates/journal-day-template.qmd：每日日志模板。\nprivate-journal/：本地私密日志说明，已加入 .gitignore。\n\n\n\n\n\n每天更新心情：改 assets/data/mood.csv。\n修改密码：改 assets/js/mood-heatmap.js 中的 JOURNAL_PASSWORD。\n真正隐私内容不要上传到公开 GitHub 仓库。"
+  },
+  {
+    "objectID": "docs/日志功能修改说明.html#主要新增内容",
+    "href": "docs/日志功能修改说明.html#主要新增内容",
+    "title": "日志功能修改说明",
+    "section": "",
+    "text": "journal.qmd：日志首页。\nassets/data/mood.csv：心情热力图数据。\nassets/js/mood-heatmap.js：读取 CSV 并生成热力图。\nassets/css/styles.css：全站样式和日志页样式。\n_templates/journal-day-template.qmd：每日日志模板。\nprivate-journal/：本地私密日志说明，已加入 .gitignore。"
+  },
+  {
+    "objectID": "docs/日志功能修改说明.html#维护重点",
+    "href": "docs/日志功能修改说明.html#维护重点",
+    "title": "日志功能修改说明",
+    "section": "",
+    "text": "每天更新心情：改 assets/data/mood.csv。\n修改密码：改 assets/js/mood-heatmap.js 中的 JOURNAL_PASSWORD。\n真正隐私内容不要上传到公开 GitHub 仓库。"
+  },
+  {
+    "objectID": "docs/博客目录说明.html",
+    "href": "docs/博客目录说明.html",
+    "title": "博客目录说明",
+    "section": "",
+    "text": "这版整理后的目录按照「页面、文章、资源、模板、文档、草稿」分开，后续维护会更清楚。\nblog/\n├─ _quarto.yml                 # Quarto 网站总配置\n├─ index.qmd                   # 首页\n├─ about.qmd                   # 关于页面\n├─ statistics.qmd              # 统计学基础栏目页\n├─ modeling.qmd                # 统计建模栏目页\n├─ survival.qmd                # 生存分析栏目页\n├─ r.qmd                       # R 语言栏目页\n├─ python.qmd                  # Python 栏目页\n├─ causal.qmd                  # 因果推断栏目页\n├─ math-modeling.qmd           # 数学建模栏目页\n├─ journal.qmd                 # 日志 / 心情热力图页面\n├─ althusser.qmd               # 阿尔都塞栏目页\n├─ philosophy.qmd              # 柏拉图栏目页\n│\n├─ posts/                      # 正式发布的文章\n│  ├─ statistics/\n│  ├─ modeling/\n│  ├─ survival/\n│  ├─ r/\n│  ├─ python/\n│  ├─ causal/\n│  ├─ math-modeling/\n│  ├─ althusser/\n│  └─ philosophy/\n│\n├─ assets/                     # 全站公共资源\n│  ├─ css/styles.css           # 全站样式\n│  ├─ js/mood-heatmap.js       # 日志热力图脚本\n│  ├─ data/mood.csv            # 心情数据\n│  └─ images/                  # 全站图片\n│     ├─ avatar/profile.jpg\n│     └─ site/\n│\n├─ _templates/                 # 可复制的写作模板\n├─ drafts/                     # 草稿区，不会自动进入文章列表\n├─ private-journal/            # 私密日志说明，本地使用，不建议上传\n├─ docs/                       # 项目维护说明\n└─ _archive/                   # 暂存旧文件、备用文件\n\n\n建议所有正式文章都使用下面这种结构：\nposts/栏目名/文章英文短名/index.qmd\nposts/栏目名/文章英文短名/image.png\n例如：\nposts/python/pandas-basic/index.qmd\nposts/python/pandas-basic/image.png\n这样每篇文章的文字、图片、附件都在同一个文件夹里，最不容易乱。"
+  },
+  {
+    "objectID": "docs/博客目录说明.html#新文章放哪里",
+    "href": "docs/博客目录说明.html#新文章放哪里",
+    "title": "博客目录说明",
+    "section": "",
+    "text": "建议所有正式文章都使用下面这种结构：\nposts/栏目名/文章英文短名/index.qmd\nposts/栏目名/文章英文短名/image.png\n例如：\nposts/python/pandas-basic/index.qmd\nposts/python/pandas-basic/image.png\n这样每篇文章的文字、图片、附件都在同一个文件夹里，最不容易乱。"
+  },
+  {
+    "objectID": "causal.html",
+    "href": "causal.html",
+    "title": "因果推断",
+    "section": "",
+    "text": "这里整理 PSM、IPTW、DID、IV、AIPW、TMLE、Causal Forest 等因果推断方法。\n\n\n\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "Eros",
+    "section": "",
+    "text": "“为什么塞尚随时都在画圣维克图瓦山呢？这是因为每时每刻的光线都是一种馈赠。\n生活，尽管有悲剧，但毕竟还可以是美好的。我已经六十七岁了，青春不再，但我终于感觉自己——因为我不是为了自己而被爱——我感觉自己从未这样年轻，即便一切都快结束了。\n是的，毕竟来日方长。”\n——阿尔都塞《来日方长》"
+  },
+  {
+    "objectID": "althusser.html",
+    "href": "althusser.html",
+    "title": "阿尔都塞",
+    "section": "",
+    "text": "这里整理阿尔都塞相关作品解读，包括《来日方长》《保卫马克思》《读〈资本论〉》等文本的阅读笔记、思想脉络和个人理解。\n\n是的，毕竟来日方长。"
+  },
+  {
+    "objectID": "althusser.html#阿尔都塞作品阅读笔记",
+    "href": "althusser.html#阿尔都塞作品阅读笔记",
+    "title": "阿尔都塞",
+    "section": "",
+    "text": "这里整理阿尔都塞相关作品解读，包括《来日方长》《保卫马克思》《读〈资本论〉》等文本的阅读笔记、思想脉络和个人理解。\n\n是的，毕竟来日方长。"
+  },
+  {
+    "objectID": "althusser.html#文章列表",
+    "href": "althusser.html#文章列表",
+    "title": "阿尔都塞",
+    "section": "文章列表",
+    "text": "文章列表"
+  },
+  {
+    "objectID": "docs/互动部件修复说明.html",
+    "href": "docs/互动部件修复说明.html",
+    "title": "互动部件修复说明",
+    "section": "",
+    "text": "这版主要修复首页内容导航卡片显示 &lt;div&gt;、&lt;h3&gt;、&lt;p&gt; 源码的问题。\n\n\n之前首页把卡片内容直接写成原生 HTML。部分 Quarto / Pandoc 渲染环境会把这些标签转义成普通文本，所以页面上会显示源码。\n\n\n\n首页 index.qmd 只保留 Quarto 原生 Markdown 和几个空容器，具体内容由：\nassets/js/site-widgets.js\n在浏览器中动态生成。这样不会再出现 HTML 标签被当成文字显示的问题。\n\n\n\n首页新增了：\n\n心情生成器\n学习抽签\n25 分钟番茄钟\n知识翻牌卡\n一键专注模式\nJS 生成的内容导航卡片\nJS 生成的标签云\n\n\n\n\n建议不要把新版压缩包直接“合并覆盖”到旧文件夹里。更稳的方式是：\n\n先备份旧博客文件夹。\n解压这个新版压缩包到一个空目录。\n在新目录运行 quarto preview。\n确认没问题后再发布。\n\n如果浏览器仍然显示旧样式，按 Ctrl + F5 强制刷新，或者清理浏览器缓存。"
+  },
+  {
+    "objectID": "docs/互动部件修复说明.html#修复原因",
+    "href": "docs/互动部件修复说明.html#修复原因",
+    "title": "互动部件修复说明",
+    "section": "",
+    "text": "之前首页把卡片内容直接写成原生 HTML。部分 Quarto / Pandoc 渲染环境会把这些标签转义成普通文本，所以页面上会显示源码。"
+  },
+  {
+    "objectID": "docs/互动部件修复说明.html#现在的做法",
+    "href": "docs/互动部件修复说明.html#现在的做法",
+    "title": "互动部件修复说明",
+    "section": "",
+    "text": "首页 index.qmd 只保留 Quarto 原生 Markdown 和几个空容器，具体内容由：\nassets/js/site-widgets.js\n在浏览器中动态生成。这样不会再出现 HTML 标签被当成文字显示的问题。"
+  },
+  {
+    "objectID": "docs/互动部件修复说明.html#新增互动部件",
+    "href": "docs/互动部件修复说明.html#新增互动部件",
+    "title": "互动部件修复说明",
+    "section": "",
+    "text": "首页新增了：\n\n心情生成器\n学习抽签\n25 分钟番茄钟\n知识翻牌卡\n一键专注模式\nJS 生成的内容导航卡片\nJS 生成的标签云"
+  },
+  {
+    "objectID": "docs/互动部件修复说明.html#使用提醒",
+    "href": "docs/互动部件修复说明.html#使用提醒",
+    "title": "互动部件修复说明",
+    "section": "",
+    "text": "建议不要把新版压缩包直接“合并覆盖”到旧文件夹里。更稳的方式是：\n\n先备份旧博客文件夹。\n解压这个新版压缩包到一个空目录。\n在新目录运行 quarto preview。\n确认没问题后再发布。\n\n如果浏览器仍然显示旧样式，按 Ctrl + F5 强制刷新，或者清理浏览器缓存。"
+  },
+  {
+    "objectID": "docs/发布流程.html",
+    "href": "docs/发布流程.html",
+    "title": "Quarto Blog 发布流程",
+    "section": "",
+    "text": "在博客根目录运行：\nquarto preview\n\n\n\nquarto render\n\n\n\nquarto publish gh-pages\n\n\n\n\n正式文章放到 posts/ 对应栏目。\n草稿放到 drafts/。\n公共图片放 assets/images/。\n某篇文章自己的图片直接放在该文章文件夹。\n心情热力图数据更新 assets/data/mood.csv。\n不要把真正隐私内容上传到公开仓库。"
+  },
+  {
+    "objectID": "docs/发布流程.html#本地预览",
+    "href": "docs/发布流程.html#本地预览",
+    "title": "Quarto Blog 发布流程",
+    "section": "",
+    "text": "在博客根目录运行：\nquarto preview"
+  },
+  {
+    "objectID": "docs/发布流程.html#渲染检查",
+    "href": "docs/发布流程.html#渲染检查",
+    "title": "Quarto Blog 发布流程",
+    "section": "",
+    "text": "quarto render"
+  },
+  {
+    "objectID": "docs/发布流程.html#发布到-github-pages",
+    "href": "docs/发布流程.html#发布到-github-pages",
+    "title": "Quarto Blog 发布流程",
+    "section": "",
+    "text": "quarto publish gh-pages"
+  },
+  {
+    "objectID": "docs/发布流程.html#常见提醒",
+    "href": "docs/发布流程.html#常见提醒",
+    "title": "Quarto Blog 发布流程",
+    "section": "",
+    "text": "正式文章放到 posts/ 对应栏目。\n草稿放到 drafts/。\n公共图片放 assets/images/。\n某篇文章自己的图片直接放在该文章文件夹。\n心情热力图数据更新 assets/data/mood.csv。\n不要把真正隐私内容上传到公开仓库。"
+  },
+  {
+    "objectID": "docs/日志维护说明.html",
+    "href": "docs/日志维护说明.html",
+    "title": "日志与心情热力图维护说明",
+    "section": "",
+    "text": "打开：\nassets/data/mood.csv\n每天新增一行：\n2026-07-01,4,3,今天状态还不错,生活|学习\n字段顺序是：\ndate,mood,energy,title,tags\n\nmood：心情分数，1 到 5。\nenergy：精力分数，1 到 5。\ntitle：当天一句话标题。\ntags：标签，用 | 分隔。\n\n\n\n\n复制模板：\n_templates/journal-day-template.qmd\n然后放到：\nposts/journal/2026-07-01/index.qmd\n如果只是自己记录，不想公开，就不要放到 posts/。\n\n\n\n建议放在本地：\nprivate-journal/\n这个文件夹已经写进 .gitignore，不建议上传到公开 GitHub 仓库。\n\n\n\n打开：\nassets/js/mood-heatmap.js\n找到：\nconst JOURNAL_PASSWORD = \"eros2026\";\n把 eros2026 改成自己的密码即可。\n注意：这个只是静态页面前端隐藏，不是真正后端登录，不要放非常隐私的内容。"
+  },
+  {
+    "objectID": "docs/日志维护说明.html#更新每日心情",
+    "href": "docs/日志维护说明.html#更新每日心情",
+    "title": "日志与心情热力图维护说明",
+    "section": "",
+    "text": "打开：\nassets/data/mood.csv\n每天新增一行：\n2026-07-01,4,3,今天状态还不错,生活|学习\n字段顺序是：\ndate,mood,energy,title,tags\n\nmood：心情分数，1 到 5。\nenergy：精力分数，1 到 5。\ntitle：当天一句话标题。\ntags：标签，用 | 分隔。"
+  },
+  {
+    "objectID": "docs/日志维护说明.html#写公开日志",
+    "href": "docs/日志维护说明.html#写公开日志",
+    "title": "日志与心情热力图维护说明",
+    "section": "",
+    "text": "复制模板：\n_templates/journal-day-template.qmd\n然后放到：\nposts/journal/2026-07-01/index.qmd\n如果只是自己记录，不想公开，就不要放到 posts/。"
+  },
+  {
+    "objectID": "docs/日志维护说明.html#写私密日志",
+    "href": "docs/日志维护说明.html#写私密日志",
+    "title": "日志与心情热力图维护说明",
+    "section": "",
+    "text": "建议放在本地：\nprivate-journal/\n这个文件夹已经写进 .gitignore，不建议上传到公开 GitHub 仓库。"
+  },
+  {
+    "objectID": "docs/日志维护说明.html#修改解锁密码",
+    "href": "docs/日志维护说明.html#修改解锁密码",
+    "title": "日志与心情热力图维护说明",
+    "section": "",
+    "text": "打开：\nassets/js/mood-heatmap.js\n找到：\nconst JOURNAL_PASSWORD = \"eros2026\";\n把 eros2026 改成自己的密码即可。\n注意：这个只是静态页面前端隐藏，不是真正后端登录，不要放非常隐私的内容。"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Eros 统计建模与数据科学笔记",
+    "section": "",
+    "text": "Eros Blog · Statistics / Modeling / Code / Philosophy\n\n\n\n这里主要记录统计学、数学建模、编程学习、强化学习、因果推断和一点点哲学阅读。日常也会写进 Mood Journal：代码会报错，作业会堆积，但鼠鼠依旧会继续做梦。\n\n进入日志 关于我 🎲 随便看看\n\n\n\n\n\n当前状态\n\n\n📍 身份\n应用统计 · 大二\n\n\n📚 最近在学\nQuarto / 强化学习 / 数值分析\n\n\n🧠 长期方向\n统计建模与数据科学\n\n\n🗓️ 今天\n加载中…{#today-date}"
+  },
+  {
+    "objectID": "index.html#把学习代码建模阅读和普通日子都留下来",
+    "href": "index.html#把学习代码建模阅读和普通日子都留下来",
+    "title": "Eros 统计建模与数据科学笔记",
+    "section": "",
+    "text": "这里主要记录统计学、数学建模、编程学习、强化学习、因果推断和一点点哲学阅读。日常也会写进 Mood Journal：代码会报错，作业会堆积，但鼠鼠依旧会继续做梦。\n\n进入日志 关于我 🎲 随便看看"
+  },
+  {
+    "objectID": "index.html#互动小部件",
+    "href": "index.html#互动小部件",
+    "title": "Eros 统计建模与数据科学笔记",
+    "section": "互动小部件",
+    "text": "互动小部件\n\n互动小部件加载中…"
+  },
+  {
+    "objectID": "index.html#内容导航",
+    "href": "index.html#内容导航",
+    "title": "Eros 统计建模与数据科学笔记",
+    "section": "内容导航",
+    "text": "内容导航\n\n内容导航加载中…"
+  },
+  {
+    "objectID": "index.html#标签云",
+    "href": "index.html#标签云",
+    "title": "Eros 统计建模与数据科学笔记",
+    "section": "标签云",
+    "text": "标签云\n\n标签云加载中…"
+  },
+  {
+    "objectID": "index.html#文章列表",
+    "href": "index.html#文章列表",
+    "title": "Eros 统计建模与数据科学笔记",
+    "section": "文章列表",
+    "text": "文章列表"
+  },
+  {
+    "objectID": "math-modeling.html",
+    "href": "math-modeling.html",
+    "title": "数学建模",
+    "section": "",
+    "text": "这里整理数学建模、运筹优化、线性规划、数值计算、MATLAB、LINGO 和 Mathematica 相关内容。\n\n\n\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "philosophy.html",
+    "href": "philosophy.html",
+    "title": "柏拉图",
+    "section": "",
+    "text": "这里整理柏拉图相关作品解读，包括《理想国》《会饮篇》《斐多篇》《申辩篇》《克里托篇》等文本的阅读笔记、思想脉络和个人理解。\n\n人生未经审视，不值得过。"
+  },
+  {
+    "objectID": "philosophy.html#柏拉图作品阅读笔记",
+    "href": "philosophy.html#柏拉图作品阅读笔记",
+    "title": "柏拉图",
+    "section": "",
+    "text": "这里整理柏拉图相关作品解读，包括《理想国》《会饮篇》《斐多篇》《申辩篇》《克里托篇》等文本的阅读笔记、思想脉络和个人理解。\n\n人生未经审视，不值得过。"
+  },
+  {
+    "objectID": "philosophy.html#文章列表",
+    "href": "philosophy.html#文章列表",
+    "title": "柏拉图",
+    "section": "文章列表",
+    "text": "文章列表"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html",
+    "href": "posts/python/reinforcement_review/index.html",
+    "title": "强化学习概述",
+    "section": "",
+    "text": "强化学习研究的是：一个智能体如何通过与环境不断交互，在奖励反馈中学会做出更好的长期决策。\n\n强化学习的英文是 Reinforcement Learning，简称 RL。它和监督学习、无监督学习最大的区别在于：强化学习不是直接学习标准答案，而是在不断试错中学习“怎么做决策”。\n举几个直观例子：\n\n打游戏：当前画面是状态，按键是动作，得分是奖励。\n机器人走路：机器人的位置和姿态是状态，电机控制是动作，是否摔倒或前进距离是奖励。\n自动驾驶：路况、车速、障碍物是状态，转向、刹车、加速是动作，安全到达目的地是奖励。\n推荐系统：用户当前兴趣是状态，推荐内容是动作，点击、停留时长和满意度是奖励。\n学习计划：当前学习水平是状态，选择复习哪门课是动作，成绩提升是奖励。\n\n强化学习最重要的特点是：\n\n没有人直接告诉智能体每一步应该怎么做，它需要通过和环境交互，根据奖励不断调整自己的行为。\n\n\n\n\n\n\n学习类型\n数据形式\n核心目标\n典型例子\n\n\n\n\n监督学习\n输入和标签\n学会预测\n图像分类、房价预测\n\n\n无监督学习\n只有数据，没有标签\n发现结构\n聚类、降维\n\n\n强化学习\n状态、动作、奖励\n学会决策\n游戏 AI、机器人控制\n\n\n\n监督学习更像“老师给标准答案”；强化学习更像“自己试错，做得好就奖励，做得差就惩罚”。\n例如，训练一个识别猫狗的模型时，监督学习会告诉模型每张图片是猫还是狗；但训练一个玩游戏的智能体时，通常不会告诉它“这一帧必须按左键”，而是告诉它最后得了多少分。\n所以强化学习的核心不是单纯预测，而是序列决策。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#强化学习与其他机器学习方法的区别",
+    "href": "posts/python/reinforcement_review/index.html#强化学习与其他机器学习方法的区别",
+    "title": "强化学习概述",
+    "section": "",
+    "text": "学习类型\n数据形式\n核心目标\n典型例子\n\n\n\n\n监督学习\n输入和标签\n学会预测\n图像分类、房价预测\n\n\n无监督学习\n只有数据，没有标签\n发现结构\n聚类、降维\n\n\n强化学习\n状态、动作、奖励\n学会决策\n游戏 AI、机器人控制\n\n\n\n监督学习更像“老师给标准答案”；强化学习更像“自己试错，做得好就奖励，做得差就惩罚”。\n例如，训练一个识别猫狗的模型时，监督学习会告诉模型每张图片是猫还是狗；但训练一个玩游戏的智能体时，通常不会告诉它“这一帧必须按左键”，而是告诉它最后得了多少分。\n所以强化学习的核心不是单纯预测，而是序列决策。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#agent-与-environment",
+    "href": "posts/python/reinforcement_review/index.html#agent-与-environment",
+    "title": "强化学习概述",
+    "section": "1.1 Agent 与 Environment",
+    "text": "1.1 Agent 与 Environment\nAgent 是智能体，也就是做决策的主体。例如游戏 AI、机器人、自动驾驶汽车、推荐系统或大模型智能体。\nEnvironment 是环境，也就是智能体所处的外部世界。智能体采取动作后，环境会发生变化，并返回新的状态和奖励。\n强化学习的基本循环如下：\n\n\nCode\nflowchart LR\n    A[Agent 智能体] --&gt;|Action 动作| B[Environment 环境]\n    B --&gt;|State 状态| A\n    B --&gt;|Reward 奖励| A\n\n\n\n\n\nflowchart LR\n    A[Agent 智能体] --&gt;|Action 动作| B[Environment 环境]\n    B --&gt;|State 状态| A\n    B --&gt;|Reward 奖励| A\n\n\n\n\n\n\n这个过程可以描述为：\n\n智能体观察当前状态 \\(S_t\\)；\n根据策略 \\(\\pi\\) 选择动作 \\(A_t\\)；\n环境接收动作后转移到新状态 \\(S_{t+1}\\)；\n环境给出奖励 \\(R_{t+1}\\)；\n智能体根据奖励调整自己的策略；\n重复以上过程。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#stateactionreward-和-policy",
+    "href": "posts/python/reinforcement_review/index.html#stateactionreward-和-policy",
+    "title": "强化学习概述",
+    "section": "1.2 State、Action、Reward 和 Policy",
+    "text": "1.2 State、Action、Reward 和 Policy\n状态记作 \\(S_t\\)，表示时刻 \\(t\\) 环境的信息。例如游戏画面、机器人位置、棋盘局面、用户当前兴趣等。\n动作记作 \\(A_t\\)，表示智能体在当前状态下采取的行为。例如游戏中向左、向右、跳跃，自动驾驶中加速、刹车、转向。\n奖励记作 \\(R_{t+1}\\)，表示智能体采取动作之后，环境给出的反馈。奖励可以是正的，也可以是负的。\n策略记作 \\(\\pi\\)，它描述智能体在某个状态下应该采取什么动作。\n如果策略是确定性的，可以写成：\n\\[\na = \\pi(s)\n\\]\n表示在状态 \\(s\\) 下直接选择动作 \\(a\\)。\n如果策略是随机性的，可以写成：\n\\[\n\\pi(a|s)\n\\]\n表示在状态 \\(s\\) 下选择动作 \\(a\\) 的概率。\n强化学习的目标是找到一个好策略，使智能体获得尽可能大的长期累计奖励。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#马尔可夫决策过程-mdp",
+    "href": "posts/python/reinforcement_review/index.html#马尔可夫决策过程-mdp",
+    "title": "强化学习概述",
+    "section": "2.1 马尔可夫决策过程 MDP",
+    "text": "2.1 马尔可夫决策过程 MDP\nMDP 可以写成一个五元组：\n\\[\n(S, A, P, R, \\gamma)\n\\]\n其中：\n\n\\(S\\)：状态集合；\n\\(A\\)：动作集合；\n\\(P\\)：状态转移概率；\n\\(R\\)：奖励函数；\n\\(\\gamma\\)：折扣因子。\n\n状态转移概率记作：\n\\[\nP(s'|s,a)\n\\]\n它表示当前处于状态 \\(s\\)，采取动作 \\(a\\)，下一步转移到状态 \\(s'\\) 的概率。\n奖励函数可以写成：\n\\[\nR(s,a,s')\n\\]\n表示从状态 \\(s\\) 出发，采取动作 \\(a\\)，到达状态 \\(s'\\) 后得到的奖励。\n折扣因子记作：\n\\[\n\\gamma \\in [0,1]\n\\]\n它衡量未来奖励的重要程度：\n\n\\(\\gamma = 0\\)：只关心眼前奖励；\n\\(\\gamma\\) 接近 \\(1\\)：非常重视长期奖励；\n实际应用中常取 \\(0.9\\)、\\(0.95\\)、\\(0.99\\)。\n\n为什么需要折扣因子？一方面，未来奖励通常具有不确定性；另一方面，折扣因子也可以让无限期回报在数学上更容易收敛。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#回报-return",
+    "href": "posts/python/reinforcement_review/index.html#回报-return",
+    "title": "强化学习概述",
+    "section": "2.2 回报 Return",
+    "text": "2.2 回报 Return\n强化学习不是只看一步奖励，而是看从当前时刻开始的长期累计奖励。\n假设从时刻 \\(t\\) 开始，智能体得到的奖励序列为：\n\\[\nR_{t+1}, R_{t+2}, R_{t+3}, \\cdots\n\\]\n那么从时刻 \\(t\\) 开始的折扣回报定义为：\n\\[\nG_t = R_{t+1} + \\gamma R_{t+2} + \\gamma^2 R_{t+3} + \\gamma^3 R_{t+4} + \\cdots\n\\]\n其中：\n\n\\(G_t\\)：从时刻 \\(t\\) 开始的累计折扣回报；\n\\(R_{t+1}\\)：下一步得到的即时奖励；\n\\(\\gamma\\)：折扣因子。\n\n观察上面的式子：\n\\[\nG_t = R_{t+1} + \\gamma R_{t+2} + \\gamma^2 R_{t+3} + \\cdots\n\\]\n而下一时刻的回报是：\n\\[\nG_{t+1} = R_{t+2} + \\gamma R_{t+3} + \\gamma^2 R_{t+4} + \\cdots\n\\]\n所以：\n\\[\n\\gamma G_{t+1}\n=\n\\gamma R_{t+2}\n+\n\\gamma^2 R_{t+3}\n+\n\\gamma^3 R_{t+4}\n+\n\\cdots\n\\]\n因此可以得到回报的递推形式：\n\\[\nG_t = R_{t+1} + \\gamma G_{t+1}\n\\]\n这个递推式非常重要，因为贝尔曼方程就是从它推导出来的。\n一句话理解：\n\n当前总回报 = 下一步奖励 + 折扣后的未来总回报。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#价值函数-value-function",
+    "href": "posts/python/reinforcement_review/index.html#价值函数-value-function",
+    "title": "强化学习概述",
+    "section": "2.3 价值函数 Value Function",
+    "text": "2.3 价值函数 Value Function\n强化学习中有两个非常重要的价值函数：状态价值函数和动作价值函数。\n状态价值函数定义为：\n\\[\nV_\\pi(s) = \\mathbb{E}_\\pi[G_t \\mid S_t = s]\n\\]\n意思是：如果当前处于状态 \\(s\\)，以后都按照策略 \\(\\pi\\) 行动，那么从现在开始能获得的长期平均回报是多少。\n动作价值函数定义为：\n\\[\nQ_\\pi(s,a) = \\mathbb{E}_\\pi[G_t \\mid S_t=s, A_t=a]\n\\]\n意思是：如果当前处于状态 \\(s\\)，先采取动作 \\(a\\)，之后再按照策略 \\(\\pi\\) 行动，那么长期平均回报是多少。\n二者区别如下：\n\n\n\n函数\n评价对象\n用途\n\n\n\n\n\\(V_\\pi(s)\\)\n状态\n判断这个状态好不好\n\n\n\\(Q_\\pi(s,a)\\)\n状态-动作对\n判断这个动作值不值得做\n\n\n\n实际做决策时，\\(Q\\) 函数更直接。因为在一个状态下，只要比较所有动作的 \\(Q\\) 值，就可以选择 \\(Q\\) 值最大的动作：\n\\[\na^* = \\arg\\max_a Q(s,a)\n\\]"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#状态价值函数的贝尔曼期望方程",
+    "href": "posts/python/reinforcement_review/index.html#状态价值函数的贝尔曼期望方程",
+    "title": "强化学习概述",
+    "section": "3.1 状态价值函数的贝尔曼期望方程",
+    "text": "3.1 状态价值函数的贝尔曼期望方程\n前面已经得到回报递推式：\n\\[\nG_t = R_{t+1} + \\gamma G_{t+1}\n\\]\n状态价值函数定义为：\n\\[\nV_\\pi(s) = \\mathbb{E}_\\pi[G_t \\mid S_t=s]\n\\]\n把 \\(G_t\\) 的递推式代入：\n\\[\nV_\\pi(s)\n=\n\\mathbb{E}_\\pi[\nR_{t+1}\n+\n\\gamma G_{t+1}\n\\mid S_t=s\n]\n\\]\n利用期望的线性性质：\n\\[\nV_\\pi(s)\n=\n\\mathbb{E}_\\pi[\nR_{t+1}\n\\mid S_t=s\n]\n+\n\\gamma\n\\mathbb{E}_\\pi[\nG_{t+1}\n\\mid S_t=s\n]\n\\]\n但 \\(G_{t+1}\\) 是从下一状态 \\(S_{t+1}\\) 开始的长期回报。根据价值函数定义：\n\\[\nV_\\pi(S_{t+1}) = \\mathbb{E}_\\pi[G_{t+1} \\mid S_{t+1}]\n\\]\n所以可以写成：\n\\[\nV_\\pi(s)\n=\n\\mathbb{E}_\\pi[\nR_{t+1}\n+\n\\gamma V_\\pi(S_{t+1})\n\\mid S_t=s\n]\n\\]\n这就是状态价值函数的贝尔曼期望方程。\n它的直观含义是：\n\n一个状态的价值 = 下一步即时奖励 + 下一状态价值的折扣。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#贝尔曼期望方程的求和形式",
+    "href": "posts/python/reinforcement_review/index.html#贝尔曼期望方程的求和形式",
+    "title": "强化学习概述",
+    "section": "3.2 贝尔曼期望方程的求和形式",
+    "text": "3.2 贝尔曼期望方程的求和形式\n在状态 \\(s\\) 下，智能体按照策略 \\(\\pi\\) 选择动作 \\(a\\)，概率是：\n\\[\n\\pi(a|s)\n\\]\n然后环境根据转移概率：\n\\[\nP(s'|s,a)\n\\]\n转移到下一个状态 \\(s'\\)。\n因此，状态价值函数可以展开为：\n\\[\nV_\\pi(s)\n=\n\\sum_a \\pi(a|s)\n\\sum_{s'} P(s'|s,a)\n[\nR(s,a,s') + \\gamma V_\\pi(s')\n]\n\\]\n这个式子中的每一部分都可以解释为：\n\n\\(\\sum_a \\pi(a|s)\\)：考虑当前策略可能选择的所有动作；\n\\(\\sum_{s'}P(s'|s,a)\\)：考虑动作之后可能到达的所有下一状态；\n\\(R(s,a,s')\\)：当前动作带来的即时奖励；\n\\(\\gamma V_\\pi(s')\\)：下一状态的长期价值；\n两层求和：对所有可能动作和可能下一状态求平均。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#动作价值函数的贝尔曼期望方程",
+    "href": "posts/python/reinforcement_review/index.html#动作价值函数的贝尔曼期望方程",
+    "title": "强化学习概述",
+    "section": "3.3 动作价值函数的贝尔曼期望方程",
+    "text": "3.3 动作价值函数的贝尔曼期望方程\n动作价值函数定义为：\n\\[\nQ_\\pi(s,a)\n=\n\\mathbb{E}_\\pi[G_t \\mid S_t=s,A_t=a]\n\\]\n同样利用：\n\\[\nG_t = R_{t+1} + \\gamma G_{t+1}\n\\]\n可得：\n\\[\nQ_\\pi(s,a)\n=\n\\mathbb{E}_\\pi[\nR_{t+1}\n+\n\\gamma G_{t+1}\n\\mid S_t=s,A_t=a\n]\n\\]\n下一步到达 \\(S_{t+1}=s'\\) 后，智能体会根据策略 \\(\\pi\\) 选择下一个动作 \\(a'\\)，所以：\n\\[\nQ_\\pi(s,a)\n=\n\\sum_{s'}P(s'|s,a)\n\\left[\nR(s,a,s')\n+\n\\gamma\n\\sum_{a'}\\pi(a'|s')Q_\\pi(s',a')\n\\right]\n\\]\n这就是 \\(Q\\) 函数的贝尔曼期望方程。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#贝尔曼最优方程",
+    "href": "posts/python/reinforcement_review/index.html#贝尔曼最优方程",
+    "title": "强化学习概述",
+    "section": "3.4 贝尔曼最优方程",
+    "text": "3.4 贝尔曼最优方程\n强化学习最终想要找到最优策略。\n最优状态价值函数定义为：\n\\[\nV_*(s) = \\max_\\pi V_\\pi(s)\n\\]\n表示在所有可能策略中，状态 \\(s\\) 能达到的最大长期回报。\n最优动作价值函数定义为：\n\\[\nQ_*(s,a) = \\max_\\pi Q_\\pi(s,a)\n\\]\n表示在状态 \\(s\\) 下先采取动作 \\(a\\)，之后采用最优策略时，能得到的最大长期回报。\n在最优情况下，智能体每一步都应该选择让长期价值最大的动作。因此：\n\\[\nV_*(s)\n=\n\\max_a\n\\sum_{s'}P(s'|s,a)\n[\nR(s,a,s')+\\gamma V_*(s')\n]\n\\]\n这就是状态价值函数的贝尔曼最优方程。\n对于 \\(Q\\) 函数：\n\\[\nQ_*(s,a)\n=\n\\sum_{s'}P(s'|s,a)\n[\nR(s,a,s')\n+\n\\gamma \\max_{a'} Q_*(s',a')\n]\n\\]\n这个公式非常关键。Q-Learning 的更新公式就是从它来的：\n\\[\nQ(S_t,A_t)\n\\leftarrow\nQ(S_t,A_t)\n+\n\\alpha\n[\nR_{t+1}\n+\n\\gamma \\max_{a'}Q(S_{t+1},a')\n-\nQ(S_t,A_t)\n]\n\\]\n其中：\n\\[\nR_{t+1}\n+\n\\gamma \\max_{a'}Q(S_{t+1},a')\n\\]\n可以理解为新的目标值；\n\\[\nR_{t+1}\n+\n\\gamma \\max_{a'}Q(S_{t+1},a')\n-\nQ(S_t,A_t)\n\\]\n就是当前估计和新目标之间的误差。\n贝尔曼方程的核心思想可以总结为：\n\n现在好不好，不只看现在得到多少，还要看未来能走到哪里。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#动态规划蒙特卡洛与时间差分",
+    "href": "posts/python/reinforcement_review/index.html#动态规划蒙特卡洛与时间差分",
+    "title": "强化学习概述",
+    "section": "4.1 动态规划、蒙特卡洛与时间差分",
+    "text": "4.1 动态规划、蒙特卡洛与时间差分\n如果我们知道环境模型，也就是知道 \\(P(s'|s,a)\\) 和 \\(R(s,a,s')\\)，那么可以直接用动态规划方法求解。\n典型方法包括：\n\n策略评估；\n策略改进；\n策略迭代；\n价值迭代。\n\n价值迭代公式为：\n\\[\nV_{k+1}(s)\n=\n\\max_a\n\\sum_{s'}P(s'|s,a)\n[\nR(s,a,s')\n+\n\\gamma V_k(s')\n]\n\\]\n反复迭代，价值函数会逐渐收敛到最优价值函数。\n蒙特卡洛方法不需要知道状态转移概率，它的思想是：\n\n多次完整地经历一局游戏，然后把某个状态之后真实得到的回报取平均。\n\n如果某个状态 \\(s\\) 出现了很多次，对应回报分别是 \\(G_1, G_2, \\cdots, G_n\\)，那么可以估计：\n\\[\nV(s) \\approx \\frac{1}{n}\\sum_{i=1}^n G_i\n\\]\n时间差分学习，英文是 Temporal Difference Learning，简称 TD。TD 方法结合了动态规划和蒙特卡洛方法的优点。\nTD 更新公式为：\n\\[\nV(S_t)\n\\leftarrow\nV(S_t)\n+\n\\alpha\n[\nR_{t+1}\n+\n\\gamma V(S_{t+1})\n-\nV(S_t)\n]\n\\]\n其中：\n\\[\n\\delta_t =\nR_{t+1}\n+\n\\gamma V(S_{t+1})\n-\nV(S_t)\n\\]\n称为 TD 误差。\nTD 方法的核心思想是：\n\n不用等一局结束，只走一步就可以更新当前状态价值。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#sarsa-与-q-learning",
+    "href": "posts/python/reinforcement_review/index.html#sarsa-与-q-learning",
+    "title": "强化学习概述",
+    "section": "4.2 SARSA 与 Q-Learning",
+    "text": "4.2 SARSA 与 Q-Learning\nSARSA 是一种 on-policy 算法。它的名字来自一次更新中用到的五个量：\n\\[\nS_t, A_t, R_{t+1}, S_{t+1}, A_{t+1}\n\\]\nSARSA 的更新公式为：\n\\[\nQ(S_t,A_t)\n\\leftarrow\nQ(S_t,A_t)\n+\n\\alpha\n[\nR_{t+1}\n+\n\\gamma Q(S_{t+1},A_{t+1})\n-\nQ(S_t,A_t)\n]\n\\]\nSARSA 学的是当前实际执行策略的价值。也就是说，下一步实际选了什么动作，它就用什么动作来更新。\nQ-Learning 是一种 off-policy 算法。更新公式为：\n\\[\nQ(S_t,A_t)\n\\leftarrow\nQ(S_t,A_t)\n+\n\\alpha\n[\nR_{t+1}\n+\n\\gamma \\max_{a'}Q(S_{t+1},a')\n-\nQ(S_t,A_t)\n]\n\\]\nSARSA 和 Q-Learning 最大区别在于：\n\nSARSA 用的是实际执行的下一动作 \\(A_{t+1}\\)；\nQ-Learning 用的是下一状态下价值最大的动作 \\(\\max_{a'}Q(S_{t+1},a')\\)。\n\n所以可以简单理解为：\n\nSARSA 学的是“我实际怎么做”；Q-Learning 学的是“理论上最优应该怎么做”。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#目前强化学习主要分类",
+    "href": "posts/python/reinforcement_review/index.html#目前强化学习主要分类",
+    "title": "强化学习概述",
+    "section": "4.3目前强化学习主要分类",
+    "text": "4.3目前强化学习主要分类\n目前强化学习分类有如下一些分法，如下图所示："
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#问题设置",
+    "href": "posts/python/reinforcement_review/index.html#问题设置",
+    "title": "强化学习概述",
+    "section": "5.1 问题设置",
+    "text": "5.1 问题设置\n我们设置一个简单环境：\n\n网格大小：\\(4 \\times 4\\)；\n终点是右下角；\n每走一步奖励为 \\(-1\\)；\n到达终点后奖励为 \\(0\\)；\n撞墙则停在原地；\n折扣因子 \\(\\gamma = 0.9\\)。\n\n动作包括上、下、左、右。我们希望通过价值迭代求出每个格子的价值，并得到最优移动方向。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#价值迭代代码",
+    "href": "posts/python/reinforcement_review/index.html#价值迭代代码",
+    "title": "强化学习概述",
+    "section": "5.2 价值迭代代码",
+    "text": "5.2 价值迭代代码\n下面这段代码可以直接在 Quarto 中运行。\n\n\nCode\nimport numpy as np\n\n# 设置网格大小\nn_rows, n_cols = 4, 4\n\n# 终点状态：右下角\nterminal_state = (3, 3)\n\n# 折扣因子\ngamma = 0.9\n\n# 动作：上、下、左、右\nactions = {\n    \"↑\": (-1, 0),\n    \"↓\": (1, 0),\n    \"←\": (0, -1),\n    \"→\": (0, 1)\n}\n\ndef step(state, action):\n    \"\"\"\n    输入当前状态和动作，返回下一个状态和奖励。\n    \"\"\"\n    if state == terminal_state:\n        return state, 0\n\n    dr, dc = actions[action]\n    r, c = state\n    nr, nc = r + dr, c + dc\n\n    # 如果撞墙，则保持原地不动\n    if nr &lt; 0 or nr &gt;= n_rows or nc &lt; 0 or nc &gt;= n_cols:\n        nr, nc = r, c\n\n    next_state = (nr, nc)\n\n    # 每走一步奖励为 -1\n    reward = -1\n\n    return next_state, reward\n\n# 初始化价值函数\nV = np.zeros((n_rows, n_cols))\n\n# 价值迭代\ntheta = 1e-6\nmax_iterations = 1000\n\nfor iteration in range(max_iterations):\n    delta = 0\n    new_V = V.copy()\n\n    for r in range(n_rows):\n        for c in range(n_cols):\n            state = (r, c)\n\n            if state == terminal_state:\n                new_V[r, c] = 0\n                continue\n\n            action_values = []\n\n            for action in actions:\n                next_state, reward = step(state, action)\n                nr, nc = next_state\n                value = reward + gamma * V[nr, nc]\n                action_values.append(value)\n\n            # 贝尔曼最优方程：选择价值最大的动作\n            new_V[r, c] = max(action_values)\n            delta = max(delta, abs(new_V[r, c] - V[r, c]))\n\n    V = new_V\n\n    if delta &lt; theta:\n        break\n\nprint(\"迭代次数：\", iteration + 1)\nprint(\"最终状态价值函数：\")\nprint(np.round(V, 2))\n\n\n迭代次数： 7\n最终状态价值函数：\n[[-4.69 -4.1  -3.44 -2.71]\n [-4.1  -3.44 -2.71 -1.9 ]\n [-3.44 -2.71 -1.9  -1.  ]\n [-2.71 -1.9  -1.    0.  ]]"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#提取最优策略",
+    "href": "posts/python/reinforcement_review/index.html#提取最优策略",
+    "title": "强化学习概述",
+    "section": "5.3 提取最优策略",
+    "text": "5.3 提取最优策略\n有了价值函数后，我们可以在每个状态比较四个动作的价值，选择最好的动作。\n\n\nCode\npolicy = np.empty((n_rows, n_cols), dtype=object)\n\nfor r in range(n_rows):\n    for c in range(n_cols):\n        state = (r, c)\n\n        if state == terminal_state:\n            policy[r, c] = \"G\"\n            continue\n\n        best_action = None\n        best_value = -np.inf\n\n        for action in actions:\n            next_state, reward = step(state, action)\n            nr, nc = next_state\n            value = reward + gamma * V[nr, nc]\n\n            if value &gt; best_value:\n                best_value = value\n                best_action = action\n\n        policy[r, c] = best_action\n\nprint(\"最优策略：\")\nprint(policy)\n\n\n最优策略：\n[['↓' '↓' '↓' '↓']\n ['↓' '↓' '↓' '↓']\n ['↓' '↓' '↓' '↓']\n ['→' '→' '→' 'G']]"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#可视化",
+    "href": "posts/python/reinforcement_review/index.html#可视化",
+    "title": "强化学习概述",
+    "section": "5.4 可视化",
+    "text": "5.4 可视化\n\n\nCode\nimport matplotlib.pyplot as plt\nfrom matplotlib import font_manager\n\ndef set_chinese_font():\n    \"\"\"\n    自动设置 Matplotlib 中文字体，避免中文乱码。\n    Windows 常见字体：Microsoft YaHei、SimHei\n    macOS 常见字体：PingFang SC、Heiti SC\n    Linux 常见字体：Noto Sans CJK SC、WenQuanYi Micro Hei\n    \"\"\"\n    candidate_fonts = [\n        \"Microsoft YaHei\",\n        \"SimHei\",\n        \"PingFang SC\",\n        \"Heiti SC\",\n        \"Noto Sans CJK SC\",\n        \"WenQuanYi Micro Hei\",\n        \"Arial Unicode MS\"\n    ]\n\n    available_fonts = {font.name for font in font_manager.fontManager.ttflist}\n\n    for font in candidate_fonts:\n        if font in available_fonts:\n            plt.rcParams[\"font.sans-serif\"] = [font]\n            break\n\n    # 解决负号显示问题\n    plt.rcParams[\"axes.unicode_minus\"] = False\n\nset_chinese_font()\n\nfig, ax = plt.subplots(figsize=(6, 6))\n\n# 画网格\nax.set_xlim(0, n_cols)\nax.set_ylim(0, n_rows)\nax.set_xticks(np.arange(0, n_cols + 1, 1))\nax.set_yticks(np.arange(0, n_rows + 1, 1))\nax.grid(True)\n\n# 调整坐标方向，使第一行显示在上方\nax.invert_yaxis()\n\n# 隐藏刻度标签\nax.set_xticklabels([])\nax.set_yticklabels([])\n\n# 写入价值和策略\nfor r in range(n_rows):\n    for c in range(n_cols):\n        if (r, c) == terminal_state:\n            text = \"终点\\n0\"\n        else:\n            text = f\"{policy[r, c]}\\n{V[r, c]:.2f}\"\n\n        ax.text(\n            c + 0.5,\n            r + 0.5,\n            text,\n            ha=\"center\",\n            va=\"center\",\n            fontsize=13\n        )\n\nax.set_title(\"GridWorld 最优策略与状态价值\", fontsize=14)\nplt.show()"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#代码结果解释",
+    "href": "posts/python/reinforcement_review/index.html#代码结果解释",
+    "title": "强化学习概述",
+    "section": "5.5 代码结果解释",
+    "text": "5.5 代码结果解释\n输出的价值函数中，越接近终点的格子，价值越高。\n因为每走一步都会得到 \\(-1\\) 的惩罚，所以距离终点越远，未来累计惩罚越多，价值就越低。\n最优策略中的箭头表示：\n\n在当前格子中，智能体应该往哪个方向走，才能让长期回报最大。\n\n这个例子对应的正是贝尔曼最优方程：\n\\[\nV_*(s)\n=\n\\max_a\n[\nR(s,a,s')\n+\n\\gamma V_*(s')\n]\n\\]\n在这个确定性环境中，下一状态 \\(s'\\) 是确定的，所以不需要对 \\(s'\\) 求概率期望。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#dqn深度-q-网络",
+    "href": "posts/python/reinforcement_review/index.html#dqn深度-q-网络",
+    "title": "强化学习概述",
+    "section": "6.1 DQN：深度 Q 网络",
+    "text": "6.1 DQN：深度 Q 网络\nDQN 的思想是用神经网络近似 \\(Q\\) 函数：\n\\[\nQ(s,a;\\theta)\n\\]\n其中 \\(\\theta\\) 是神经网络参数。\nDQN 可以理解为：\n\nQ-Learning + 深度神经网络。\n\nDQN 的输入可以是游戏画面，输出是每个动作的 \\(Q\\) 值。\nDQN 的核心技术包括：\n\n经验回放；\n目标网络；\n用神经网络拟合 \\(Q\\) 值。\n\n经验回放会把智能体经历过的转移样本：\n\\[\n(S_t,A_t,R_{t+1},S_{t+1})\n\\]\n存入经验池中，然后随机抽取一批样本训练神经网络。这样可以打乱数据相关性，提高训练稳定性。\n目标网络则用于缓解训练不稳定问题。如果用同一个网络同时产生当前估计和目标值，训练会非常容易震荡。DQN 因此引入目标网络，隔一段时间再更新目标网络参数。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#policy-gradient",
+    "href": "posts/python/reinforcement_review/index.html#policy-gradient",
+    "title": "强化学习概述",
+    "section": "6.2 Policy Gradient",
+    "text": "6.2 Policy Gradient\nQ-Learning 这类方法主要学习价值函数，然后根据价值函数选择动作。\nPolicy Gradient 方法则是直接学习策略：\n\\[\n\\pi_\\theta(a|s)\n\\]\n其中 \\(\\theta\\) 是策略网络参数。\n它的思想是：\n\n如果某个动作带来了更高回报，就提高以后在类似状态下选择这个动作的概率。\n\nPolicy Gradient 特别适合连续动作空间。例如机器人控制中，动作可能不是“上、下、左、右”，而是具体的电机力矩，这种动作是连续的，无法简单枚举。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#actor-critic",
+    "href": "posts/python/reinforcement_review/index.html#actor-critic",
+    "title": "强化学习概述",
+    "section": "6.3 Actor-Critic",
+    "text": "6.3 Actor-Critic\nActor-Critic 方法把强化学习分成两个部分：\n\nActor：负责选择动作；\nCritic：负责评价动作。\n\n可以这样理解：\n\nActor 是演员，负责表演；Critic 是评论家，负责打分。\n\nActor 根据当前策略选择动作，Critic 根据价值函数判断这个动作好不好。\n如果 Critic 认为这个动作比预期更好，那么 Actor 就增加以后选择类似动作的概率；如果 Critic 认为这个动作比预期更差，那么 Actor 就减少选择类似动作的概率。\n常见 Actor-Critic 相关算法包括 A2C、A3C、DDPG、TD3、PPO 和 SAC。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#常见算法对比",
+    "href": "posts/python/reinforcement_review/index.html#常见算法对比",
+    "title": "强化学习概述",
+    "section": "6.4 常见算法对比",
+    "text": "6.4 常见算法对比\n\n\n\n\n\n\n\n\n\n算法\n类型\n核心思想\n适用场景\n\n\n\n\nDynamic Programming\nModel-Based\n已知环境模型，用贝尔曼方程递推\n小规模、模型已知\n\n\nMonte Carlo\nModel-Free\n通过完整回合的平均回报估计价值\n有终止状态的任务\n\n\nTD Learning\nModel-Free\n走一步就更新价值\n在线学习\n\n\nSARSA\nOn-Policy\n按实际执行策略更新 Q 值\n需要考虑探索行为\n\n\nQ-Learning\nOff-Policy\n用下一状态最大 Q 值更新\n离散动作\n\n\nDQN\nValue-Based\n用神经网络近似 Q 函数\n图像输入、离散动作\n\n\nPolicy Gradient\nPolicy-Based\n直接优化策略概率\n连续动作\n\n\nActor-Critic\nHybrid\nActor 决策，Critic 评价\n复杂控制任务\n\n\nPPO\nPolicy Optimization\n限制策略更新幅度，提高稳定性\n通用深度强化学习\n\n\nSAC\nMaximum Entropy RL\n最大化奖励同时保持探索性\n连续控制"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#现实应用",
+    "href": "posts/python/reinforcement_review/index.html#现实应用",
+    "title": "强化学习概述",
+    "section": "7.1 现实应用",
+    "text": "7.1 现实应用\n强化学习在游戏 AI 中有很多经典案例，例如 Atari 游戏、AlphaGo、AlphaZero 等。游戏环境规则明确、奖励清楚、可以大量模拟，因此非常适合作为强化学习算法的测试平台。\n在机器人控制中，强化学习可以用于机械臂抓取、机器人行走、无人机控制、机器人导航和工业自动化控制。但现实机器人试错成本高，因此常见做法是先在仿真环境中训练，再迁移到真实机器人上，这类问题也被称为 sim-to-real。\n在自动驾驶中，强化学习可以用于变道决策、路径规划、车速控制、多车交互和路口通行策略。但自动驾驶对安全性要求极高，因此实际研究中通常要结合仿真平台、安全约束和离线数据。\n在推荐系统中，强化学习不只关注用户是否点击，还关注用户长期满意度、内容多样性和用户留存。它可以把推荐看成序列决策问题。\n在大语言模型中，RLHF 是一个重要方向。RLHF 的全称是 Reinforcement Learning from Human Feedback，即“基于人类反馈的强化学习”。它通常先收集人类偏好数据，训练奖励模型，再利用强化学习优化语言模型，使模型回答更符合人类偏好。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#研究前沿",
+    "href": "posts/python/reinforcement_review/index.html#研究前沿",
+    "title": "强化学习概述",
+    "section": "7.2 研究前沿",
+    "text": "7.2 研究前沿\n当前强化学习的研究前沿主要包括以下方向。\nOffline RL：离线强化学习。\n传统强化学习需要智能体不断和环境交互，但在医疗、金融、自动驾驶和工业控制中，在线试错往往成本很高。离线强化学习希望只利用已有历史数据学习策略。\nSafe RL：安全强化学习。\n强化学习需要探索，但探索可能带来危险。安全强化学习希望在学习过程中满足安全约束，例如机器人不能摔倒，自动驾驶不能撞车，工业系统不能超过安全温度。\nMulti-Agent RL：多智能体强化学习。\n多智能体强化学习研究多个智能体同时学习的问题，应用包括多机器人协作、无人机集群、交通信号灯控制、多车自动驾驶和博弈对抗。\nModel-Based RL：基于模型的强化学习。\nModel-Free RL 直接学习价值函数或策略，而 Model-Based RL 会先学习一个环境模型：\n\\[\n\\hat{P}(s'|s,a)\n\\]\n然后利用这个模型进行规划。它的思想是：先学会世界如何变化，再在模型里模拟未来。\nWorld Models：世界模型。\n世界模型希望智能体能够在内部建立一个“想象中的环境”，从而在脑海中模拟未来。这类似人类做决定时会先想：如果我这样做，接下来可能会发生什么？\n强化学习与大模型智能体。\n强化学习和大语言模型结合后，出现了 RLHF、RLAIF、RLVR、工具使用智能体、多智能体协作、具身智能和通用机器人策略等方向。\n\n\n强化学习的本质，不是让机器记住标准答案，而是让机器学会在不断变化的环境中做出更好的长期决策。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#a.-value-based-方法基于价值函数的算法",
+    "href": "posts/python/reinforcement_review/index.html#a.-value-based-方法基于价值函数的算法",
+    "title": "强化学习概述",
+    "section": "A. Value-Based 方法：基于价值函数的算法",
+    "text": "A. Value-Based 方法：基于价值函数的算法\nValue-Based 方法的核心思想是：\n\n先估计状态或动作的价值，再选择价值最高的动作。\n\n它通常学习的是状态价值函数 \\(V(s)\\) 或动作价值函数 \\(Q(s,a)\\)。\n其中，状态价值函数为：\n\\[\nV_\\pi(s)=\\mathbb{E}_\\pi[G_t \\mid S_t=s]\n\\]\n动作价值函数为：\n\\[\nQ_\\pi(s,a)=\\mathbb{E}_\\pi[G_t \\mid S_t=s,A_t=a]\n\\]\n如果已经得到了动作价值函数 \\(Q(s,a)\\)，那么可以通过下面的方式选择动作：\n\\[\na^*=\\arg\\max_a Q(s,a)\n\\]\n也就是说，在当前状态下，选择 \\(Q\\) 值最大的动作。\n\n\nA.1 Monte Carlo 方法\n\n核心思想\nMonte Carlo 方法通过多次完整的试验过程来估计价值函数。\n它不需要知道环境的状态转移概率 \\(P(s'|s,a)\\)，只需要智能体在环境中多次运行，记录每次从某个状态开始后实际得到的回报。\n如果状态 \\(s\\) 被访问了多次，对应回报为：\n\\[\nG_1,G_2,\\cdots,G_n\n\\]\n那么状态价值可以估计为：\n\\[\nV(s)\\approx \\frac{1}{n}\\sum_{i=1}^{n}G_i\n\\]\n\n\n特点\n\n优点：思想简单，不需要环境模型。\n缺点：必须等一个完整 episode 结束后才能更新。\n适合：有明确终止状态的任务，例如棋类游戏、回合制游戏。\n\n\n\n伪代码\n算法：Monte Carlo 价值估计\n\n初始化 V(s) = 0\n初始化 Returns(s) 为空列表\n\n重复执行多个 episode：\n    使用当前策略 π 生成一个完整轨迹：\n        S0, A0, R1, S1, A1, R2, ..., ST\n\n    从后往前计算每个时刻的回报 G：\n        G = Rt+1 + γ Rt+2 + γ^2 Rt+3 + ...\n\n    对 episode 中出现过的每个状态 s：\n        将对应回报 G 加入 Returns(s)\n        更新：\n            V(s) = average(Returns(s))\n\n输出状态价值函数 V(s)\n\n\n\n\nA.2 TD Learning：时间差分学习\n\n核心思想\nTD Learning 结合了动态规划和 Monte Carlo 的思想。\nMonte Carlo 需要等一个完整 episode 结束后才能更新，而 TD 方法只需要走一步就可以更新。\nTD 的基本更新公式为：\n\\[\nV(S_t)\n\\leftarrow\nV(S_t)\n+\n\\alpha\n[\nR_{t+1}\n+\n\\gamma V(S_{t+1})\n-\nV(S_t)\n]\n\\]\n其中：\n\\[\n\\delta_t=\nR_{t+1}\n+\n\\gamma V(S_{t+1})\n-\nV(S_t)\n\\]\n称为 TD 误差。\n\n\n直观理解\nTD 方法的思想是：\n\n当前状态的价值，应该接近“下一步奖励 + 下一状态价值的折扣”。\n\n如果当前估计值 \\(V(S_t)\\) 和新的目标值 \\(R_{t+1}+\\gamma V(S_{t+1})\\) 不一致，就根据误差进行修正。\n\n\n伪代码\n算法：TD(0) 状态价值估计\n\n初始化 V(s) = 0\n\n重复执行多个 episode：\n    初始化状态 S\n\n    当 S 不是终止状态时：\n        根据策略 π 选择动作 A\n        执行动作 A，得到奖励 R 和下一状态 S'\n\n        计算 TD 目标：\n            TD_target = R + γ V(S')\n\n        计算 TD 误差：\n            TD_error = TD_target - V(S)\n\n        更新状态价值：\n            V(S) = V(S) + α TD_error\n\n        令 S = S'\n\n输出状态价值函数 V(s)\n\n\n\n\nA.3 SARSA 算法\n\n核心思想\nSARSA 是一种 On-Policy 算法。\n它学习的是当前策略本身的动作价值函数。\nSARSA 的名字来自一次更新中用到的五个量：\n\\[\nS_t,A_t,R_{t+1},S_{t+1},A_{t+1}\n\\]\n更新公式为：\n\\[\nQ(S_t,A_t)\n\\leftarrow\nQ(S_t,A_t)\n+\n\\alpha\n[\nR_{t+1}\n+\n\\gamma Q(S_{t+1},A_{t+1})\n-\nQ(S_t,A_t)\n]\n\\]\n\n\n直观理解\nSARSA 是“实际怎么走，就怎么学”。\n下一步实际选择了哪个动作 \\(A_{t+1}\\)，就用这个动作的 \\(Q\\) 值来更新当前状态动作对。\n\n\n特点\n\n属于 On-Policy 方法。\n学习过程比较保守。\n适合需要考虑探索行为风险的场景。\n\n\n\n伪代码\n算法：SARSA\n\n初始化 Q(s,a) = 0\n\n重复执行多个 episode：\n    初始化状态 S\n    根据 ε-greedy 策略从 Q 中选择动作 A\n\n    当 S 不是终止状态时：\n        执行动作 A，得到奖励 R 和下一状态 S'\n\n        根据 ε-greedy 策略从 Q 中选择下一动作 A'\n\n        计算 TD 目标：\n            TD_target = R + γ Q(S', A')\n\n        更新：\n            Q(S,A) = Q(S,A) + α [TD_target - Q(S,A)]\n\n        令 S = S'\n        令 A = A'\n\n输出动作价值函数 Q(s,a)\n\n\n\n\nA.4 Q-Learning 算法\n\n核心思想\nQ-Learning 是一种经典的 Off-Policy 算法。\n它学习的是最优动作价值函数 \\(Q_*(s,a)\\)。\nQ-Learning 的更新公式为：\n\\[\nQ(S_t,A_t)\n\\leftarrow\nQ(S_t,A_t)\n+\n\\alpha\n[\nR_{t+1}\n+\n\\gamma \\max_{a'}Q(S_{t+1},a')\n-\nQ(S_t,A_t)\n]\n\\]\n\n\n直观理解\nQ-Learning 是“实际可以探索，但学习目标始终朝最优动作靠近”。\n也就是说，即使智能体为了探索选择了一个不是最优的动作，更新时仍然使用下一状态中最大的 \\(Q\\) 值作为目标。\n\n\nSARSA 与 Q-Learning 的区别\n\n\n\n算法\n类型\n更新时使用的下一步动作\n\n\n\n\nSARSA\nOn-Policy\n实际选择的动作 \\(A_{t+1}\\)\n\n\nQ-Learning\nOff-Policy\n最优动作 \\(\\max_{a'}Q(S_{t+1},a')\\)\n\n\n\n\n\n伪代码\n算法：Q-Learning\n\n初始化 Q(s,a) = 0\n\n重复执行多个 episode：\n    初始化状态 S\n\n    当 S 不是终止状态时：\n        根据 ε-greedy 策略选择动作 A\n\n        执行动作 A，得到奖励 R 和下一状态 S'\n\n        计算 TD 目标：\n            TD_target = R + γ max_a' Q(S', a')\n\n        更新：\n            Q(S,A) = Q(S,A) + α [TD_target - Q(S,A)]\n\n        令 S = S'\n\n输出动作价值函数 Q(s,a)\n\n\n\n\nA.5 DQN：深度 Q 网络\n\n核心思想\n当状态空间很大时，传统 Q-Learning 无法用表格保存所有 \\(Q(s,a)\\)。\n例如，游戏画面是图像，自动驾驶状态包含大量传感器信息，这时状态空间非常大。\nDQN 的思想是用神经网络近似动作价值函数：\n\\[\nQ(s,a;\\theta)\n\\]\n其中 \\(\\theta\\) 是神经网络参数。\nDQN 可以理解为：\n\nQ-Learning + 深度神经网络。\n\n\n\nDQN 的目标函数\nDQN 的目标值为：\n\\[\ny=\nR_{t+1}\n+\n\\gamma\n\\max_{a'}Q(S_{t+1},a';\\theta^-)\n\\]\n其中 \\(\\theta^-\\) 是目标网络参数。\n损失函数为：\n\\[\nL(\\theta)\n=\n[\ny-Q(S_t,A_t;\\theta)\n]^2\n\\]\n\n\nDQN 的两个关键技巧\n第一，经验回放。\n智能体把经历过的数据：\n\\[\n(S_t,A_t,R_{t+1},S_{t+1})\n\\]\n存入经验池，然后随机抽取小批量样本训练神经网络。\n这样可以降低样本之间的相关性，让训练更稳定。\n第二，目标网络。\nDQN 使用一个目标网络来计算目标值，并每隔一段时间同步参数，避免训练过程震荡过大。\n\n\n伪代码\n算法：DQN\n\n初始化 Q 网络参数 θ\n初始化目标网络参数 θ^- = θ\n初始化经验回放池 D\n\n重复执行多个 episode：\n    初始化状态 S\n\n    当 S 不是终止状态时：\n        根据 ε-greedy 策略选择动作 A：\n            以 ε 的概率随机选择动作\n            以 1-ε 的概率选择 argmax_a Q(S,a;θ)\n\n        执行动作 A，得到奖励 R 和下一状态 S'\n\n        将样本 (S,A,R,S') 存入经验回放池 D\n\n        从 D 中随机采样一批样本 (Sj,Aj,Rj,Sj')\n\n        对每个样本计算目标值：\n            yj = Rj + γ max_a' Q(Sj',a';θ^-)\n\n        最小化损失函数：\n            L(θ) = [yj - Q(Sj,Aj;θ)]^2\n\n        每隔 C 步更新目标网络：\n            θ^- = θ\n\n        令 S = S'\n\n输出训练好的 Q 网络"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#b.-policy-based-方法基于策略的算法",
+    "href": "posts/python/reinforcement_review/index.html#b.-policy-based-方法基于策略的算法",
+    "title": "强化学习概述",
+    "section": "B. Policy-Based 方法：基于策略的算法",
+    "text": "B. Policy-Based 方法：基于策略的算法\nPolicy-Based 方法不先学习 \\(Q\\) 表或价值表，而是直接学习策略函数。\n策略函数通常写成：\n\\[\n\\pi_\\theta(a|s)\n\\]\n其中 \\(\\theta\\) 是策略参数。\n它表示：\n\n在状态 \\(s\\) 下，选择动作 \\(a\\) 的概率。\n\nPolicy-Based 方法的目标是直接最大化期望回报：\n\\[\nJ(\\theta)=\\mathbb{E}_{\\pi_\\theta}[G_t]\n\\]\n然后通过梯度上升更新策略参数：\n\\[\n\\theta\n\\leftarrow\n\\theta\n+\n\\alpha\n\\nabla_\\theta J(\\theta)\n\\]\n\n\nB.1 REINFORCE 算法\n\n核心思想\nREINFORCE 是最经典的策略梯度算法之一。\n它的思想是：\n\n如果某个动作最终带来了较高回报，就提高以后在类似状态下选择这个动作的概率。\n\n策略梯度的基本形式为：\n\\[\n\\nabla_\\theta J(\\theta)\n=\n\\mathbb{E}_{\\pi_\\theta}\n[\nG_t\n\\nabla_\\theta \\log \\pi_\\theta(A_t|S_t)\n]\n\\]\n因此更新公式可以写成：\n\\[\n\\theta\n\\leftarrow\n\\theta\n+\n\\alpha\nG_t\n\\nabla_\\theta \\log \\pi_\\theta(A_t|S_t)\n\\]\n\n\n直观理解\n如果 \\(G_t\\) 很大，说明这一步之后的结果不错，那么就增加选择 \\(A_t\\) 的概率。\n如果 \\(G_t\\) 很小，说明这一步之后的结果不好，那么就降低选择 \\(A_t\\) 的概率。\n\n\n特点\n\n优点：可以直接优化策略，适合连续动作空间。\n缺点：方差较大，训练不稳定。\n常用改进：加入 baseline，降低方差。\n\n\n\n伪代码\n算法：REINFORCE\n\n初始化策略参数 θ\n\n重复执行多个 episode：\n    使用策略 πθ 生成一个完整轨迹：\n        S0, A0, R1, S1, A1, R2, ..., ST\n\n    对轨迹中每个时间步 t：\n        计算从 t 开始的回报 Gt：\n            Gt = Rt+1 + γ Rt+2 + γ^2 Rt+3 + ...\n\n        更新策略参数：\n            θ = θ + α Gt ∇θ log πθ(At | St)\n\n输出策略 πθ\n\n\n\n\nB.2 带 Baseline 的 Policy Gradient\n\n核心思想\nREINFORCE 直接使用回报 \\(G_t\\) 更新策略，但回报波动较大，导致训练方差很高。\n为降低方差，可以引入 baseline，例如状态价值函数 \\(V(s)\\)。\n更新公式变为：\n\\[\n\\theta\n\\leftarrow\n\\theta\n+\n\\alpha\n[\nG_t - V(S_t)\n]\n\\nabla_\\theta \\log \\pi_\\theta(A_t|S_t)\n\\]\n其中：\n\\[\nA_t^{adv}=G_t-V(S_t)\n\\]\n称为优势函数，表示当前动作比平均水平好多少。\n\n\n直观理解\n\n如果 \\(G_t&gt;V(S_t)\\)，说明动作比平均水平好，增加其概率。\n如果 \\(G_t&lt;V(S_t)\\)，说明动作比平均水平差，降低其概率。\n\n\n\n伪代码\n算法：带 Baseline 的 Policy Gradient\n\n初始化策略参数 θ\n初始化价值函数参数 w\n\n重复执行多个 episode：\n    使用策略 πθ 生成一条完整轨迹\n\n    对轨迹中每个时间步 t：\n        计算回报 Gt\n\n        计算优势：\n            Advantage = Gt - V(St;w)\n\n        更新策略参数：\n            θ = θ + α Advantage ∇θ log πθ(At | St)\n\n        更新价值函数参数：\n            最小化 [Gt - V(St;w)]^2\n\n输出策略 πθ\n\n\n\n\nB.3 Actor-Critic 算法\n\n核心思想\nActor-Critic 结合了 Value-Based 和 Policy-Based 的思想。\n它由两个部分组成：\n\nActor：负责选择动作，即学习策略 \\(\\pi_\\theta(a|s)\\)。\nCritic：负责评价动作，即学习价值函数 \\(V_w(s)\\) 或 \\(Q_w(s,a)\\)。\n\nCritic 用 TD 误差评价 Actor 的动作好不好：\n\\[\n\\delta_t\n=\nR_{t+1}\n+\n\\gamma V_w(S_{t+1})\n-\nV_w(S_t)\n\\]\nActor 根据 TD 误差更新策略：\n\\[\n\\theta\n\\leftarrow\n\\theta\n+\n\\alpha\n\\delta_t\n\\nabla_\\theta\n\\log\n\\pi_\\theta(A_t|S_t)\n\\]\nCritic 更新价值函数：\n\\[\nw\n\\leftarrow\nw\n+\n\\beta\n\\delta_t\n\\nabla_w V_w(S_t)\n\\]\n\n\n直观理解\nActor-Critic 可以理解为：\n\nActor 是演员，负责行动；Critic 是评论家，负责评价。\n\n如果 Critic 认为这次动作比预期更好，Actor 就增加以后选择类似动作的概率。\n如果 Critic 认为这次动作比预期更差，Actor 就减少以后选择类似动作的概率。\n\n\n伪代码\n算法：Actor-Critic\n\n初始化 Actor 参数 θ\n初始化 Critic 参数 w\n\n重复执行多个 episode：\n    初始化状态 S\n\n    当 S 不是终止状态时：\n        Actor 根据策略 πθ(a|S) 选择动作 A\n\n        执行动作 A，得到奖励 R 和下一状态 S'\n\n        Critic 计算 TD 误差：\n            δ = R + γ V(S';w) - V(S;w)\n\n        更新 Critic：\n            w = w + β δ ∇w V(S;w)\n\n        更新 Actor：\n            θ = θ + α δ ∇θ log πθ(A|S)\n\n        令 S = S'\n\n输出策略 πθ 和价值函数 Vw\n\n\n\n\nB.4 PPO 算法\n\n核心思想\nPPO 的全称是 Proximal Policy Optimization，即近端策略优化。\n它是目前非常常用的策略优化算法。\nPPO 的核心思想是：\n\n每次更新策略时，不要让新策略和旧策略差得太远。\n\n如果策略变化太大，训练容易不稳定；如果完全不变，又学不到东西。PPO 通过限制策略更新幅度，在学习效率和稳定性之间取得平衡。\nPPO 使用新旧策略概率比：\n\\[\nr_t(\\theta)\n=\n\\frac{\\pi_\\theta(A_t|S_t)}\n{\\pi_{\\theta_{\\text{old}}}(A_t|S_t)}\n\\]\nPPO 的裁剪目标函数为：\n\\[\nL^{CLIP}(\\theta)\n=\n\\mathbb{E}_t\n[\n\\min(\nr_t(\\theta)A_t,\n\\text{clip}(r_t(\\theta),1-\\epsilon,1+\\epsilon)A_t\n)\n]\n\\]\n其中 \\(A_t\\) 是优势函数，\\(\\epsilon\\) 是裁剪范围。\n\n\n直观理解\nPPO 不希望策略一步变化太大。\n它会限制：\n\\[\nr_t(\\theta)\n\\]\n不能偏离 \\(1\\) 太多。\n也就是说，新策略相对于旧策略不能改变得太夸张。\n\n\n伪代码\n算法：PPO\n\n初始化策略参数 θ\n初始化价值函数参数 w\n\n重复执行多轮训练：\n    使用当前策略 πθ 收集一批轨迹数据\n\n    对每个时间步计算优势函数 A_t\n    保存旧策略概率 π_old(A_t|S_t)\n\n    重复更新 K 次：\n        计算概率比：\n            r_t(θ) = πθ(A_t|S_t) / π_old(A_t|S_t)\n\n        计算裁剪目标：\n            L_clip = min(\n                r_t(θ) A_t,\n                clip(r_t(θ), 1-ε, 1+ε) A_t\n            )\n\n        更新策略参数 θ，使 L_clip 最大化\n\n        更新价值函数参数 w，使预测价值接近实际回报\n\n输出策略 πθ"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#c.-model-based-方法基于模型的算法",
+    "href": "posts/python/reinforcement_review/index.html#c.-model-based-方法基于模型的算法",
+    "title": "强化学习概述",
+    "section": "C. Model-Based 方法：基于模型的算法",
+    "text": "C. Model-Based 方法：基于模型的算法\nModel-Based 方法的核心思想是：\n\n先利用或学习环境模型，再根据模型进行规划。\n\n环境模型通常包括两部分：\n\n状态转移模型：\n\n\\[\nP(s'|s,a)\n\\]\n\n奖励模型：\n\n\\[\nR(s,a,s')\n\\]\n如果模型已知，可以直接用动态规划方法求解；如果模型未知，可以先从数据中学习模型，再利用模型进行规划。\n\n\nC.1 策略迭代 Policy Iteration\n\n核心思想\n策略迭代由两个步骤反复组成：\n\n策略评估：计算当前策略 \\(\\pi\\) 的价值函数 \\(V_\\pi(s)\\)。\n策略改进：根据价值函数改进策略。\n\n策略评估使用贝尔曼期望方程：\n\\[\nV_\\pi(s)\n=\n\\sum_a \\pi(a|s)\n\\sum_{s'}P(s'|s,a)\n[\nR(s,a,s')+\\gamma V_\\pi(s')\n]\n\\]\n策略改进为：\n\\[\n\\pi_{\\text{new}}(s)\n=\n\\arg\\max_a\n\\sum_{s'}P(s'|s,a)\n[\nR(s,a,s')+\\gamma V_\\pi(s')\n]\n\\]\n\n\n直观理解\n策略迭代就是：\n\n先评价当前策略有多好，再根据评价结果改进策略。\n\n这个过程不断重复，直到策略不再变化。\n\n\n伪代码\n算法：策略迭代 Policy Iteration\n\n初始化一个随机策略 π\n\n重复执行：\n    1. 策略评估：\n        重复更新每个状态 s：\n            V(s) = Σ_a π(a|s) Σ_s' P(s'|s,a)\n                   [R(s,a,s') + γ V(s')]\n        直到 V(s) 收敛\n\n    2. 策略改进：\n        对每个状态 s：\n            old_action = π(s)\n\n            π(s) = argmax_a Σ_s' P(s'|s,a)\n                   [R(s,a,s') + γ V(s')]\n\n        如果所有状态的策略都没有变化：\n            停止算法\n\n输出最优策略 π 和价值函数 V\n\n\n\n\nC.2 价值迭代 Value Iteration\n\n核心思想\n价值迭代直接使用贝尔曼最优方程更新价值函数：\n\\[\nV_{k+1}(s)\n=\n\\max_a\n\\sum_{s'}P(s'|s,a)\n[\nR(s,a,s')\n+\n\\gamma V_k(s')\n]\n\\]\n它不需要在每一轮中完整评估一个策略，而是直接把“取最大值”的操作加入价值更新中。\n\n\n直观理解\n价值迭代可以看成：\n\n每次更新都假设当前要选择最优动作，让价值函数逐渐逼近最优价值函数。\n\n\n\n伪代码\n算法：价值迭代 Value Iteration\n\n初始化 V(s) = 0\n\n重复执行：\n    对每个状态 s：\n        V_new(s) = max_a Σ_s' P(s'|s,a)\n                   [R(s,a,s') + γ V(s')]\n\n    如果所有状态的 V 变化都很小：\n        停止迭代\n\n    V = V_new\n\n根据最终 V 提取策略：\n    π(s) = argmax_a Σ_s' P(s'|s,a)\n           [R(s,a,s') + γ V(s')]\n\n输出最优价值函数 V 和最优策略 π\n\n\n\n\nC.3 Dyna-Q 算法\n\n核心思想\nDyna-Q 结合了 Model-Free 和 Model-Based 的思想。\n它既从真实环境交互中学习 \\(Q\\) 值，也学习一个环境模型，然后利用模型生成模拟经验继续更新 \\(Q\\) 值。\nDyna-Q 的基本思想是：\n\n真实经验用于学习，模拟经验也用于学习。\n\n真实环境交互得到样本：\n\\[\n(S,A,R,S')\n\\]\n然后用它更新 \\(Q(S,A)\\)，同时把它存入模型：\n\\[\nModel(S,A)=(R,S')\n\\]\n之后再从模型中抽取过去见过的状态动作对，模拟得到奖励和下一状态，用来继续更新 \\(Q\\)。\n\n\n直观理解\n普通 Q-Learning 只用真实经验学习。\nDyna-Q 则会在脑海中“回放”或“想象”一些经验，从而提高学习效率。\n\n\n伪代码\n算法：Dyna-Q\n\n初始化 Q(s,a) = 0\n初始化环境模型 Model\n\n重复执行多个 episode：\n    初始化状态 S\n\n    当 S 不是终止状态时：\n        根据 ε-greedy 策略选择动作 A\n\n        在真实环境中执行 A，得到 R 和 S'\n\n        使用真实经验更新 Q：\n            Q(S,A) = Q(S,A) + α [R + γ max_a' Q(S',a') - Q(S,A)]\n\n        更新模型：\n            Model(S,A) = (R,S')\n\n        重复 n 次规划：\n            随机选择之前访问过的状态动作对 (S_m,A_m)\n            从模型中得到：\n                R_m, S_m' = Model(S_m,A_m)\n\n            使用模拟经验更新 Q：\n                Q(S_m,A_m) = Q(S_m,A_m)\n                             + α [R_m + γ max_a' Q(S_m',a') - Q(S_m,A_m)]\n\n        令 S = S'\n\n输出动作价值函数 Q(s,a)\n\n\n\n\nC.4 MCTS：蒙特卡洛树搜索\n\n核心思想\nMCTS 的全称是 Monte Carlo Tree Search，即蒙特卡洛树搜索。\n它常用于棋类游戏和博弈问题，例如围棋、国际象棋等。\nMCTS 不一定需要完整枚举所有状态，而是通过模拟搜索来判断哪些动作更有价值。\nMCTS 通常包括四个步骤：\n\nSelection：从根节点开始，根据选择策略向下选择节点。\nExpansion：扩展一个新的子节点。\nSimulation：从新节点开始随机模拟到终局。\nBackpropagation：把模拟结果反向传播，更新路径上的节点价值。\n\n\n\n直观理解\nMCTS 就像是在做决策前，在脑海中模拟很多种可能未来。\n模拟次数越多，越能判断当前哪个动作更有希望带来胜利。\n\n\n伪代码\n算法：MCTS\n\n初始化根节点 root\n\n在计算时间允许范围内重复：\n    1. Selection：\n        从 root 出发\n        根据选择规则不断选择子节点\n        直到到达一个可扩展节点\n\n    2. Expansion：\n        如果当前节点不是终止节点：\n            扩展一个新的子节点\n\n    3. Simulation：\n        从该节点开始，使用默认策略随机模拟到终局\n        得到模拟结果 reward\n\n    4. Backpropagation：\n        沿着路径向上回传 reward\n        更新每个节点的访问次数和价值估计\n\n最终：\n    在 root 的子节点中选择访问次数最多或价值最高的动作\n\n输出当前状态下的最优动作\n\n\n\n\nC.5 World Models：世界模型\n\n核心思想\nWorld Models 是近年来强化学习中的重要方向。\n它希望智能体先学习一个内部环境模型，也就是“世界如何变化”的模型，然后在这个模型中想象未来，并利用想象结果来改进策略。\n世界模型通常包括：\n\n表示模型：把高维观测压缩成低维状态；\n动态模型：预测下一个状态；\n奖励模型：预测奖励；\n策略模型：在学到的世界模型中进行决策。\n\n可以写成：\n\\[\n\\hat{s}_{t+1}=f_\\phi(s_t,a_t)\n\\]\n\\[\n\\hat{r}_{t+1}=g_\\psi(s_t,a_t)\n\\]\n其中 \\(f_\\phi\\) 表示状态转移模型，\\(g_\\psi\\) 表示奖励预测模型。\n\n\n直观理解\nWorld Models 的思想是：\n\n先学会一个可以在脑海中模拟的世界，再在这个世界里练习决策。\n\n这可以显著减少真实环境中的试错成本。\n\n\n伪代码\n算法：World Model 强化学习框架\n\n初始化世界模型参数 φ\n初始化奖励模型参数 ψ\n初始化策略参数 θ\n\n阶段一：收集数据\n    使用当前策略或随机策略与环境交互\n    收集数据：\n        (S,A,R,S')\n\n阶段二：学习世界模型\n    使用数据训练状态转移模型：\n        预测 S' = fφ(S,A)\n\n    使用数据训练奖励模型：\n        预测 R = gψ(S,A)\n\n阶段三：在模型中规划或训练策略\n    在学习到的世界模型中生成模拟轨迹：\n        S, A, R_hat, S_hat'\n\n    根据模拟轨迹更新策略 πθ\n\n阶段四：真实环境验证\n    将策略放回真实环境中测试\n    收集新数据并继续改进世界模型和策略\n\n输出策略 πθ 和世界模型"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#d.-三类算法的对比总结",
+    "href": "posts/python/reinforcement_review/index.html#d.-三类算法的对比总结",
+    "title": "强化学习概述",
+    "section": "D. 三类算法的对比总结",
+    "text": "D. 三类算法的对比总结\n\n\n\n\n\n\n\n\n\n\n类别\n学习目标\n是否需要环境模型\n代表算法\n适用场景\n\n\n\n\nValue-Based\n学习 \\(V(s)\\) 或 \\(Q(s,a)\\)\n不一定需要\nTD、SARSA、Q-Learning、DQN\n离散动作、游戏任务\n\n\nPolicy-Based\n直接学习 \\(\\pi_\\theta(a|s)\\)\n不需要\nREINFORCE、Policy Gradient、PPO\n连续动作、复杂策略\n\n\nActor-Critic\n同时学习策略和价值\n不需要\nA2C、A3C、DDPG、TD3、SAC\n复杂控制任务\n\n\nModel-Based\n学习或利用环境模型\n需要或学习模型\n策略迭代、价值迭代、Dyna-Q、MCTS、World Models\n模型已知或可模拟场景"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#e.-一句话理解各类算法",
+    "href": "posts/python/reinforcement_review/index.html#e.-一句话理解各类算法",
+    "title": "强化学习概述",
+    "section": "E. 一句话理解各类算法",
+    "text": "E. 一句话理解各类算法\n可以用下面几句话快速记忆：\n\nMonte Carlo：完整跑完一局，再用实际回报估计价值。\nTD Learning：不等一局结束，走一步就更新。\nSARSA：实际怎么走，就怎么学。\nQ-Learning：实际可以探索，但学习目标朝最优动作靠近。\nDQN：用神经网络近似 \\(Q\\) 函数。\nREINFORCE：回报高的动作，以后更可能被选择。\nActor-Critic：Actor 负责行动，Critic 负责评价。\nPPO：更新策略时不要变化太大。\n策略迭代：先评价策略，再改进策略。\n价值迭代：直接用贝尔曼最优方程逼近最优价值。\nDyna-Q：真实经验和模拟经验一起学习。\nMCTS：决策前模拟很多种未来。\nWorld Models：先学一个世界，再在世界里练习决策。"
+  },
+  {
+    "objectID": "posts/python/reinforcement_review/index.html#f.-算法选择建议",
+    "href": "posts/python/reinforcement_review/index.html#f.-算法选择建议",
+    "title": "强化学习概述",
+    "section": "F. 算法选择建议",
+    "text": "F. 算法选择建议\n如果状态和动作都比较少，可以优先考虑表格型方法，例如 SARSA 和 Q-Learning。\n如果状态复杂但动作是离散的，可以考虑 DQN 及其改进算法。\n如果动作是连续的，例如机器人控制、自动驾驶控制，可以考虑 Policy Gradient、Actor-Critic、PPO、SAC 等方法。\n如果环境模型已知，可以考虑动态规划中的策略迭代和价值迭代。\n如果环境模型未知但可以学习，可以考虑 Dyna-Q、Model-Based RL 或 World Models。\n如果任务对安全性要求很高，例如医疗、金融、自动驾驶，不能随便在线试错，则更适合考虑 Offline RL、Safe RL 或基于模型的保守方法。"
+  },
+  {
+    "objectID": "python.html",
+    "href": "python.html",
+    "title": "Python 数据分析",
+    "section": "",
+    "text": "这里整理 Python 基础、NumPy、pandas、matplotlib、scikit-learn 以及数据分析项目、可视化案例和机器学习入门等相关内容。\n\n用 Python 记录数据分析的学习过程。"
+  },
+  {
+    "objectID": "python.html#python-数据分析学习笔记",
+    "href": "python.html#python-数据分析学习笔记",
+    "title": "Python 数据分析",
+    "section": "",
+    "text": "这里整理 Python 基础、NumPy、pandas、matplotlib、scikit-learn 以及数据分析项目、可视化案例和机器学习入门等相关内容。\n\n用 Python 记录数据分析的学习过程。"
+  },
+  {
+    "objectID": "python.html#文章列表",
+    "href": "python.html#文章列表",
+    "title": "Python 数据分析",
+    "section": "文章列表",
+    "text": "文章列表"
+  },
+  {
+    "objectID": "statistics.html",
+    "href": "statistics.html",
+    "title": "统计学基础",
+    "section": "",
+    "text": "这里整理概率论、数理统计、参数估计、假设检验、方差分析、非参数统计等基础内容。\n\n\n\n\n\n\n\n\nNo matching items"
+  }
+]

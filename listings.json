@@ -1,0 +1,52 @@
+[
+  {
+    "listing": "/survival.html",
+    "items": [
+      "/posts/survival/lung/index.html"
+    ]
+  },
+  {
+    "listing": "/r.html",
+    "items": []
+  },
+  {
+    "listing": "/modeling.html",
+    "items": []
+  },
+  {
+    "listing": "/causal.html",
+    "items": []
+  },
+  {
+    "listing": "/althusser.html",
+    "items": []
+  },
+  {
+    "listing": "/index.html",
+    "items": [
+      "/posts/python/reinforcement_review/index.html",
+      "/posts/survival/lung/index.html",
+      "/posts/philosophy/plato-symposium/index.html"
+    ]
+  },
+  {
+    "listing": "/math-modeling.html",
+    "items": []
+  },
+  {
+    "listing": "/philosophy.html",
+    "items": [
+      "/posts/philosophy/plato-symposium/index.html"
+    ]
+  },
+  {
+    "listing": "/python.html",
+    "items": [
+      "/posts/python/reinforcement_review/index.html"
+    ]
+  },
+  {
+    "listing": "/statistics.html",
+    "items": []
+  }
+]
