@@ -1333,3 +1333,163 @@ body.focus-mode main.content {
     font-size: 2.3rem;
   }
 }
+
+/* ---------- Mood Journal：高对比情绪热力图覆盖样式 ---------- */
+#mood-heatmap {
+  padding: 1.35rem;
+}
+
+.mood-year-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-size: 1rem;
+}
+
+.mood-year-title span {
+  color: #777777;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.mood-heatmap-wrap {
+  grid-template-columns: 26px max-content;
+  gap: 5px 10px;
+}
+
+.mood-months {
+  gap: 4px;
+}
+
+.mood-weekdays {
+  grid-template-rows: repeat(7, 16px);
+  gap: 4px;
+  line-height: 16px;
+}
+
+.mood-grid {
+  grid-template-rows: repeat(7, 16px);
+  gap: 4px;
+}
+
+.mood-cell {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: transform 0.12s ease, outline 0.12s ease, box-shadow 0.12s ease;
+}
+
+.mood-recorded {
+  border-color: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.mood-cell:hover {
+  transform: scale(1.22);
+  outline: 2px solid #111111;
+  outline-offset: 1px;
+  z-index: 2;
+}
+
+/* 0 是未记录，必须和 1 分拉开，不然看不出记录过 */
+.mood-0 {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
+/* 1-5 使用红橙黄绿深绿，高对比，更适合看情绪波动 */
+.mood-1 {
+  background: #e03131;
+}
+
+.mood-2 {
+  background: #f08c00;
+}
+
+.mood-3 {
+  background: #ffd43b;
+}
+
+.mood-4 {
+  background: #51cf66;
+}
+
+.mood-5 {
+  background: #2b8a3e;
+}
+
+.mood-outside {
+  opacity: 0.18;
+}
+
+.mood-legend {
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.mood-trend-block {
+  margin-top: 1.15rem;
+  border-top: 1px dashed #e4e4e4;
+  padding-top: 1rem;
+}
+
+.mood-trend-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  margin-bottom: 0.55rem;
+  color: #222222;
+  font-weight: 800;
+}
+
+.mood-trend-head small {
+  color: #777777;
+  font-weight: 500;
+}
+
+.mood-trend-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.mood-trend-svg {
+  display: block;
+  min-width: 100%;
+  height: 128px;
+}
+
+.mood-trend-guide {
+  stroke: #e8e8e8;
+  stroke-width: 1;
+}
+
+.mood-trend-line {
+  fill: none;
+  stroke: #222222;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mood-trend-dot {
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.mood-trend-dot-1 { fill: #e03131; }
+.mood-trend-dot-2 { fill: #f08c00; }
+.mood-trend-dot-3 { fill: #ffd43b; }
+.mood-trend-dot-4 { fill: #51cf66; }
+.mood-trend-dot-5 { fill: #2b8a3e; }
+
+.mood-trend-empty {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  background: #f8f8f8;
+  border: 1px dashed #dddddd;
+  border-radius: 12px;
+  color: #777777;
+}

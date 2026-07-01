@@ -336,74 +336,67 @@
     "text": "这些部件都是静态网页前端功能，不需要后端。\n如果发布到 GitHub Pages，建议先运行 quarto preview 确认页面正常。\n如果随机文章按钮跳转不对，优先检查 assets/js/site-widgets.js 里的 href 是否写对。"
   },
   {
-    "objectID": "docs/日志功能修改说明.html",
-    "href": "docs/日志功能修改说明.html",
-    "title": "日志功能修改说明",
+    "objectID": "docs/日志热力图修复说明.html",
+    "href": "docs/日志热力图修复说明.html",
+    "title": "日志热力图修复说明",
     "section": "",
-    "text": "本项目已经新增日志板块，并按照整理后的目录结构存放相关文件。\n\n\n\njournal.qmd：日志首页。\nassets/data/mood.csv：心情热力图数据。\nassets/js/mood-heatmap.js：读取 CSV 并生成热力图。\nassets/css/styles.css：全站样式和日志页样式。\n_templates/journal-day-template.qmd：每日日志模板。\nprivate-journal/：本地私密日志说明，已加入 .gitignore。\n\n\n\n\n\n每天更新心情：改 assets/data/mood.csv。\n修改密码：改 assets/js/mood-heatmap.js 中的 JOURNAL_PASSWORD。\n真正隐私内容不要上传到公开 GitHub 仓库。"
+    "text": "之前使用的是黑白灰渐变，未记录 与 心情 1 分 的颜色太接近。再加上一年有 365 个格子，而目前只记录了几天，所以视觉上会觉得“几乎没有变化”。\n现在已改成高对比颜色：\n\n1 分：红色\n2 分：橙色\n3 分：黄色\n4 分：浅绿色\n5 分：深绿色\n未记录：极浅灰色\n\n同时新增了“心情波动线”，记录 2 天以上后会自动显示折线。\n\n\n\n连续打卡不是手动输入的，而是脚本根据 assets/data/mood.csv 自动计算的。\n规则是：从最新一条记录日期开始，往前一天一天检查，只要每天都有记录就继续加 1；中间缺一天就停止。\n例如：\n2026-06-28,1,1,普通一天,生活\n2026-06-29,2,2,稍好一点,学习\n2026-06-30,3,3,状态恢复,博客\n连续打卡 = 3 天。\n如果是：\n2026-06-28,1,1,普通一天,生活\n2026-06-30,3,3,状态恢复,博客\n因为缺少 2026-06-29，连续打卡 = 1 天。\n\n\n\n打开：\nassets/data/mood.csv\n按下面格式追加一行：\n2026-07-01,3,3,今天状态还可以,博客|学习\n完整表头必须保留：\ndate,mood,energy,title,tags"
   },
   {
-    "objectID": "docs/日志功能修改说明.html#主要新增内容",
-    "href": "docs/日志功能修改说明.html#主要新增内容",
-    "title": "日志功能修改说明",
+    "objectID": "docs/日志热力图修复说明.html#为什么之前看不出波动",
+    "href": "docs/日志热力图修复说明.html#为什么之前看不出波动",
+    "title": "日志热力图修复说明",
     "section": "",
-    "text": "journal.qmd：日志首页。\nassets/data/mood.csv：心情热力图数据。\nassets/js/mood-heatmap.js：读取 CSV 并生成热力图。\nassets/css/styles.css：全站样式和日志页样式。\n_templates/journal-day-template.qmd：每日日志模板。\nprivate-journal/：本地私密日志说明，已加入 .gitignore。"
+    "text": "之前使用的是黑白灰渐变，未记录 与 心情 1 分 的颜色太接近。再加上一年有 365 个格子，而目前只记录了几天，所以视觉上会觉得“几乎没有变化”。\n现在已改成高对比颜色：\n\n1 分：红色\n2 分：橙色\n3 分：黄色\n4 分：浅绿色\n5 分：深绿色\n未记录：极浅灰色\n\n同时新增了“心情波动线”，记录 2 天以上后会自动显示折线。"
   },
   {
-    "objectID": "docs/日志功能修改说明.html#维护重点",
-    "href": "docs/日志功能修改说明.html#维护重点",
-    "title": "日志功能修改说明",
+    "objectID": "docs/日志热力图修复说明.html#连续打卡怎么算",
+    "href": "docs/日志热力图修复说明.html#连续打卡怎么算",
+    "title": "日志热力图修复说明",
     "section": "",
-    "text": "每天更新心情：改 assets/data/mood.csv。\n修改密码：改 assets/js/mood-heatmap.js 中的 JOURNAL_PASSWORD。\n真正隐私内容不要上传到公开 GitHub 仓库。"
+    "text": "连续打卡不是手动输入的，而是脚本根据 assets/data/mood.csv 自动计算的。\n规则是：从最新一条记录日期开始，往前一天一天检查，只要每天都有记录就继续加 1；中间缺一天就停止。\n例如：\n2026-06-28,1,1,普通一天,生活\n2026-06-29,2,2,稍好一点,学习\n2026-06-30,3,3,状态恢复,博客\n连续打卡 = 3 天。\n如果是：\n2026-06-28,1,1,普通一天,生活\n2026-06-30,3,3,状态恢复,博客\n因为缺少 2026-06-29，连续打卡 = 1 天。"
   },
   {
-    "objectID": "docs/博客目录说明.html",
-    "href": "docs/博客目录说明.html",
-    "title": "博客目录说明",
+    "objectID": "docs/日志热力图修复说明.html#每天怎么添加",
+    "href": "docs/日志热力图修复说明.html#每天怎么添加",
+    "title": "日志热力图修复说明",
     "section": "",
-    "text": "这版整理后的目录按照「页面、文章、资源、模板、文档、草稿」分开，后续维护会更清楚。\nblog/\n├─ _quarto.yml                 # Quarto 网站总配置\n├─ index.qmd                   # 首页\n├─ about.qmd                   # 关于页面\n├─ statistics.qmd              # 统计学基础栏目页\n├─ modeling.qmd                # 统计建模栏目页\n├─ survival.qmd                # 生存分析栏目页\n├─ r.qmd                       # R 语言栏目页\n├─ python.qmd                  # Python 栏目页\n├─ causal.qmd                  # 因果推断栏目页\n├─ math-modeling.qmd           # 数学建模栏目页\n├─ journal.qmd                 # 日志 / 心情热力图页面\n├─ althusser.qmd               # 阿尔都塞栏目页\n├─ philosophy.qmd              # 柏拉图栏目页\n│\n├─ posts/                      # 正式发布的文章\n│  ├─ statistics/\n│  ├─ modeling/\n│  ├─ survival/\n│  ├─ r/\n│  ├─ python/\n│  ├─ causal/\n│  ├─ math-modeling/\n│  ├─ althusser/\n│  └─ philosophy/\n│\n├─ assets/                     # 全站公共资源\n│  ├─ css/styles.css           # 全站样式\n│  ├─ js/mood-heatmap.js       # 日志热力图脚本\n│  ├─ data/mood.csv            # 心情数据\n│  └─ images/                  # 全站图片\n│     ├─ avatar/profile.jpg\n│     └─ site/\n│\n├─ _templates/                 # 可复制的写作模板\n├─ drafts/                     # 草稿区，不会自动进入文章列表\n├─ private-journal/            # 私密日志说明，本地使用，不建议上传\n├─ docs/                       # 项目维护说明\n└─ _archive/                   # 暂存旧文件、备用文件\n\n\n建议所有正式文章都使用下面这种结构：\nposts/栏目名/文章英文短名/index.qmd\nposts/栏目名/文章英文短名/image.png\n例如：\nposts/python/pandas-basic/index.qmd\nposts/python/pandas-basic/image.png\n这样每篇文章的文字、图片、附件都在同一个文件夹里，最不容易乱。"
+    "text": "打开：\nassets/data/mood.csv\n按下面格式追加一行：\n2026-07-01,3,3,今天状态还可以,博客|学习\n完整表头必须保留：\ndate,mood,energy,title,tags"
   },
   {
-    "objectID": "docs/博客目录说明.html#新文章放哪里",
-    "href": "docs/博客目录说明.html#新文章放哪里",
-    "title": "博客目录说明",
+    "objectID": "docs/发布流程.html",
+    "href": "docs/发布流程.html",
+    "title": "Quarto Blog 发布流程",
     "section": "",
-    "text": "建议所有正式文章都使用下面这种结构：\nposts/栏目名/文章英文短名/index.qmd\nposts/栏目名/文章英文短名/image.png\n例如：\nposts/python/pandas-basic/index.qmd\nposts/python/pandas-basic/image.png\n这样每篇文章的文字、图片、附件都在同一个文件夹里，最不容易乱。"
+    "text": "在博客根目录运行：\nquarto preview\n\n\n\nquarto render\n\n\n\nquarto publish gh-pages\n\n\n\n\n正式文章放到 posts/ 对应栏目。\n草稿放到 drafts/。\n公共图片放 assets/images/。\n某篇文章自己的图片直接放在该文章文件夹。\n心情热力图数据更新 assets/data/mood.csv。\n不要把真正隐私内容上传到公开仓库。"
   },
   {
-    "objectID": "causal.html",
-    "href": "causal.html",
-    "title": "因果推断",
+    "objectID": "docs/发布流程.html#本地预览",
+    "href": "docs/发布流程.html#本地预览",
+    "title": "Quarto Blog 发布流程",
     "section": "",
-    "text": "这里整理 PSM、IPTW、DID、IV、AIPW、TMLE、Causal Forest 等因果推断方法。\n\n\n\n\n\n\n\n\nNo matching items"
+    "text": "在博客根目录运行：\nquarto preview"
   },
   {
-    "objectID": "about.html",
-    "href": "about.html",
-    "title": "Eros",
+    "objectID": "docs/发布流程.html#渲染检查",
+    "href": "docs/发布流程.html#渲染检查",
+    "title": "Quarto Blog 发布流程",
     "section": "",
-    "text": "“为什么塞尚随时都在画圣维克图瓦山呢？这是因为每时每刻的光线都是一种馈赠。\n生活，尽管有悲剧，但毕竟还可以是美好的。我已经六十七岁了，青春不再，但我终于感觉自己——因为我不是为了自己而被爱——我感觉自己从未这样年轻，即便一切都快结束了。\n是的，毕竟来日方长。”\n——阿尔都塞《来日方长》"
+    "text": "quarto render"
   },
   {
-    "objectID": "althusser.html",
-    "href": "althusser.html",
-    "title": "阿尔都塞",
+    "objectID": "docs/发布流程.html#发布到-github-pages",
+    "href": "docs/发布流程.html#发布到-github-pages",
+    "title": "Quarto Blog 发布流程",
     "section": "",
-    "text": "这里整理阿尔都塞相关作品解读，包括《来日方长》《保卫马克思》《读〈资本论〉》等文本的阅读笔记、思想脉络和个人理解。\n\n是的，毕竟来日方长。"
+    "text": "quarto publish gh-pages"
   },
   {
-    "objectID": "althusser.html#阿尔都塞作品阅读笔记",
-    "href": "althusser.html#阿尔都塞作品阅读笔记",
-    "title": "阿尔都塞",
+    "objectID": "docs/发布流程.html#常见提醒",
+    "href": "docs/发布流程.html#常见提醒",
+    "title": "Quarto Blog 发布流程",
     "section": "",
-    "text": "这里整理阿尔都塞相关作品解读，包括《来日方长》《保卫马克思》《读〈资本论〉》等文本的阅读笔记、思想脉络和个人理解。\n\n是的，毕竟来日方长。"
-  },
-  {
-    "objectID": "althusser.html#文章列表",
-    "href": "althusser.html#文章列表",
-    "title": "阿尔都塞",
-    "section": "文章列表",
-    "text": "文章列表"
+    "text": "正式文章放到 posts/ 对应栏目。\n草稿放到 drafts/。\n公共图片放 assets/images/。\n某篇文章自己的图片直接放在该文章文件夹。\n心情热力图数据更新 assets/data/mood.csv。\n不要把真正隐私内容上传到公开仓库。"
   },
   {
     "objectID": "docs/互动部件修复说明.html",
@@ -441,39 +434,74 @@
     "text": "建议不要把新版压缩包直接“合并覆盖”到旧文件夹里。更稳的方式是：\n\n先备份旧博客文件夹。\n解压这个新版压缩包到一个空目录。\n在新目录运行 quarto preview。\n确认没问题后再发布。\n\n如果浏览器仍然显示旧样式，按 Ctrl + F5 强制刷新，或者清理浏览器缓存。"
   },
   {
-    "objectID": "docs/发布流程.html",
-    "href": "docs/发布流程.html",
-    "title": "Quarto Blog 发布流程",
+    "objectID": "althusser.html",
+    "href": "althusser.html",
+    "title": "阿尔都塞",
     "section": "",
-    "text": "在博客根目录运行：\nquarto preview\n\n\n\nquarto render\n\n\n\nquarto publish gh-pages\n\n\n\n\n正式文章放到 posts/ 对应栏目。\n草稿放到 drafts/。\n公共图片放 assets/images/。\n某篇文章自己的图片直接放在该文章文件夹。\n心情热力图数据更新 assets/data/mood.csv。\n不要把真正隐私内容上传到公开仓库。"
+    "text": "这里整理阿尔都塞相关作品解读，包括《来日方长》《保卫马克思》《读〈资本论〉》等文本的阅读笔记、思想脉络和个人理解。\n\n是的，毕竟来日方长。"
   },
   {
-    "objectID": "docs/发布流程.html#本地预览",
-    "href": "docs/发布流程.html#本地预览",
-    "title": "Quarto Blog 发布流程",
+    "objectID": "althusser.html#阿尔都塞作品阅读笔记",
+    "href": "althusser.html#阿尔都塞作品阅读笔记",
+    "title": "阿尔都塞",
     "section": "",
-    "text": "在博客根目录运行：\nquarto preview"
+    "text": "这里整理阿尔都塞相关作品解读，包括《来日方长》《保卫马克思》《读〈资本论〉》等文本的阅读笔记、思想脉络和个人理解。\n\n是的，毕竟来日方长。"
   },
   {
-    "objectID": "docs/发布流程.html#渲染检查",
-    "href": "docs/发布流程.html#渲染检查",
-    "title": "Quarto Blog 发布流程",
-    "section": "",
-    "text": "quarto render"
+    "objectID": "althusser.html#文章列表",
+    "href": "althusser.html#文章列表",
+    "title": "阿尔都塞",
+    "section": "文章列表",
+    "text": "文章列表"
   },
   {
-    "objectID": "docs/发布流程.html#发布到-github-pages",
-    "href": "docs/发布流程.html#发布到-github-pages",
-    "title": "Quarto Blog 发布流程",
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "Eros",
     "section": "",
-    "text": "quarto publish gh-pages"
+    "text": "“为什么塞尚随时都在画圣维克图瓦山呢？这是因为每时每刻的光线都是一种馈赠。\n生活，尽管有悲剧，但毕竟还可以是美好的。我已经六十七岁了，青春不再，但我终于感觉自己——因为我不是为了自己而被爱——我感觉自己从未这样年轻，即便一切都快结束了。\n是的，毕竟来日方长。”\n——阿尔都塞《来日方长》"
   },
   {
-    "objectID": "docs/发布流程.html#常见提醒",
-    "href": "docs/发布流程.html#常见提醒",
-    "title": "Quarto Blog 发布流程",
+    "objectID": "causal.html",
+    "href": "causal.html",
+    "title": "因果推断",
     "section": "",
-    "text": "正式文章放到 posts/ 对应栏目。\n草稿放到 drafts/。\n公共图片放 assets/images/。\n某篇文章自己的图片直接放在该文章文件夹。\n心情热力图数据更新 assets/data/mood.csv。\n不要把真正隐私内容上传到公开仓库。"
+    "text": "这里整理 PSM、IPTW、DID、IV、AIPW、TMLE、Causal Forest 等因果推断方法。\n\n\n\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "docs/博客目录说明.html",
+    "href": "docs/博客目录说明.html",
+    "title": "博客目录说明",
+    "section": "",
+    "text": "这版整理后的目录按照「页面、文章、资源、模板、文档、草稿」分开，后续维护会更清楚。\nblog/\n├─ _quarto.yml                 # Quarto 网站总配置\n├─ index.qmd                   # 首页\n├─ about.qmd                   # 关于页面\n├─ statistics.qmd              # 统计学基础栏目页\n├─ modeling.qmd                # 统计建模栏目页\n├─ survival.qmd                # 生存分析栏目页\n├─ r.qmd                       # R 语言栏目页\n├─ python.qmd                  # Python 栏目页\n├─ causal.qmd                  # 因果推断栏目页\n├─ math-modeling.qmd           # 数学建模栏目页\n├─ journal.qmd                 # 日志 / 心情热力图页面\n├─ althusser.qmd               # 阿尔都塞栏目页\n├─ philosophy.qmd              # 柏拉图栏目页\n│\n├─ posts/                      # 正式发布的文章\n│  ├─ statistics/\n│  ├─ modeling/\n│  ├─ survival/\n│  ├─ r/\n│  ├─ python/\n│  ├─ causal/\n│  ├─ math-modeling/\n│  ├─ althusser/\n│  └─ philosophy/\n│\n├─ assets/                     # 全站公共资源\n│  ├─ css/styles.css           # 全站样式\n│  ├─ js/mood-heatmap.js       # 日志热力图脚本\n│  ├─ data/mood.csv            # 心情数据\n│  └─ images/                  # 全站图片\n│     ├─ avatar/profile.jpg\n│     └─ site/\n│\n├─ _templates/                 # 可复制的写作模板\n├─ drafts/                     # 草稿区，不会自动进入文章列表\n├─ private-journal/            # 私密日志说明，本地使用，不建议上传\n├─ docs/                       # 项目维护说明\n└─ _archive/                   # 暂存旧文件、备用文件\n\n\n建议所有正式文章都使用下面这种结构：\nposts/栏目名/文章英文短名/index.qmd\nposts/栏目名/文章英文短名/image.png\n例如：\nposts/python/pandas-basic/index.qmd\nposts/python/pandas-basic/image.png\n这样每篇文章的文字、图片、附件都在同一个文件夹里，最不容易乱。"
+  },
+  {
+    "objectID": "docs/博客目录说明.html#新文章放哪里",
+    "href": "docs/博客目录说明.html#新文章放哪里",
+    "title": "博客目录说明",
+    "section": "",
+    "text": "建议所有正式文章都使用下面这种结构：\nposts/栏目名/文章英文短名/index.qmd\nposts/栏目名/文章英文短名/image.png\n例如：\nposts/python/pandas-basic/index.qmd\nposts/python/pandas-basic/image.png\n这样每篇文章的文字、图片、附件都在同一个文件夹里，最不容易乱。"
+  },
+  {
+    "objectID": "docs/日志功能修改说明.html",
+    "href": "docs/日志功能修改说明.html",
+    "title": "日志功能修改说明",
+    "section": "",
+    "text": "本项目已经新增日志板块，并按照整理后的目录结构存放相关文件。\n\n\n\njournal.qmd：日志首页。\nassets/data/mood.csv：心情热力图数据。\nassets/js/mood-heatmap.js：读取 CSV 并生成热力图。\nassets/css/styles.css：全站样式和日志页样式。\n_templates/journal-day-template.qmd：每日日志模板。\nprivate-journal/：本地私密日志说明，已加入 .gitignore。\n\n\n\n\n\n每天更新心情：改 assets/data/mood.csv。\n修改密码：改 assets/js/mood-heatmap.js 中的 JOURNAL_PASSWORD。\n真正隐私内容不要上传到公开 GitHub 仓库。"
+  },
+  {
+    "objectID": "docs/日志功能修改说明.html#主要新增内容",
+    "href": "docs/日志功能修改说明.html#主要新增内容",
+    "title": "日志功能修改说明",
+    "section": "",
+    "text": "journal.qmd：日志首页。\nassets/data/mood.csv：心情热力图数据。\nassets/js/mood-heatmap.js：读取 CSV 并生成热力图。\nassets/css/styles.css：全站样式和日志页样式。\n_templates/journal-day-template.qmd：每日日志模板。\nprivate-journal/：本地私密日志说明，已加入 .gitignore。"
+  },
+  {
+    "objectID": "docs/日志功能修改说明.html#维护重点",
+    "href": "docs/日志功能修改说明.html#维护重点",
+    "title": "日志功能修改说明",
+    "section": "",
+    "text": "每天更新心情：改 assets/data/mood.csv。\n修改密码：改 assets/js/mood-heatmap.js 中的 JOURNAL_PASSWORD。\n真正隐私内容不要上传到公开 GitHub 仓库。"
   },
   {
     "objectID": "docs/日志维护说明.html",

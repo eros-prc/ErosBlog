@@ -341,47 +341,26 @@ ul.task-list li input[type="checkbox"] {
 
 </main> <!-- /main -->
 <script>
-
 (function () {
-
   var version = "20260701-interactive-fixed";
-
   var candidates = [
-
     "assets/js/site-widgets.js",
-
     "../assets/js/site-widgets.js",
-
     "../../assets/js/site-widgets.js",
-
     "../../../assets/js/site-widgets.js",
-
     "../../../../assets/js/site-widgets.js"
-
   ];
-
   var i = 0;
-
   function loadNext() {
-
     if (i >= candidates.length) return;
-
     var script = document.createElement("script");
-
     script.src = candidates[i++] + "?v=" + version;
-
     script.onerror = loadNext;
-
     document.body.appendChild(script);
-
   }
-
   loadNext();
-
 })();
-
 </script>
-
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
     const icon = "";
