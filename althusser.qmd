@@ -1,0 +1,26 @@
+---
+title: "阿尔都塞"
+listing:
+  contents:
+    - "posts/althusser/*/index.qmd"
+  sort: "date desc"
+  type: default
+  categories: true
+---
+::: {.hero-section}
+
+::: {.hero-text}
+## 阿尔都塞作品阅读笔记
+
+这里整理阿尔都塞相关作品解读，包括《来日方长》《保卫马克思》《读〈资本论〉》等文本的阅读笔记、思想脉络和个人理解。
+
+> 是的，毕竟来日方长。
+:::
+
+::: {.hero-image}
+![](assets/images/site/althusser.jpeg)
+:::
+
+:::
+
+## 文章列表

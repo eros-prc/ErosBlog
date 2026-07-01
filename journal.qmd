@@ -1,0 +1,88 @@
+---
+title: "Mood Journal"
+subtitle: "记录一些普通日子里的心情、学习、疲惫、快乐和继续往前走的证据。"
+page-layout: full
+toc: false
+---
+
+::: {.journal-hero}
+
+::: {.journal-hero-text}
+## Mood Journal
+
+这里不追求每天都很精彩，只记录普通日子里的状态、情绪和一点点继续往前走的证据。
+
+> 公开展示心情数据，谨慎公开日志正文。真正隐私的内容建议只放本地，不要上传到公开 GitHub 仓库。
+:::
+
+::: {.journal-hero-note}
+**记录规则**
+
+- 心情：1 到 5 分
+- 精力：1 到 5 分
+- 每天只写一句标题也算记录
+- 重要的是长期留下痕迹
+:::
+
+:::
+
+## 心情热力图
+
+<div id="mood-heatmap"></div>
+
+## 最近状态
+
+<div id="mood-stats" class="mood-stats"></div>
+
+## 最近记录
+
+<div id="mood-recent-list" class="mood-recent-list"></div>
+
+## 日志正文
+
+::: {.journal-lock}
+
+<div class="journal-lock-title">🔒 轻度密码解锁</div>
+
+<p>这个密码解锁只是静态博客里的前端隐藏，适合放普通生活碎片，不适合放真正隐私内容。</p>
+
+<div class="journal-lock-form">
+  <input type="password" id="journal-password" placeholder="输入密码查看日志正文">
+  <button onclick="unlockJournal()">解锁</button>
+</div>
+
+<p id="journal-message" class="journal-message"></p>
+
+:::
+
+<div id="journal-content" class="journal-private" style="display:none;">
+
+### 2026-06-30｜给博客加一个心情日志
+
+今天给博客加了一个日志页面，以后可以像 GitHub 贡献图一样看到每天的心情。感觉这个设计还挺适合我：不用每天写很多话，哪怕只写一句，也算留下了那天活过的证据。
+
+### 2026-06-29｜有点累但没有放弃
+
+今天有点累，事情也比较杂，但还是往前推进了一点点。虽然鼠鼠经常崩溃，但鼠鼠也确实没有停下。
+
+</div>
+
+## 怎么更新每天心情
+
+以后每天只需要打开 `assets/data/mood.csv`，按下面格式加一行：
+
+```csv
+2026-07-01,4,3,今天状态还不错,生活|学习
+```
+
+字段含义：
+
+| 字段 | 含义 |
+|---|---|
+| `date` | 日期 |
+| `mood` | 心情分数，1 到 5 |
+| `energy` | 精力分数，1 到 5 |
+| `title` | 当天一句话标题 |
+| `tags` | 标签，用 `|` 分隔 |
+
+<script src="assets/js/mood-heatmap.js"></script>

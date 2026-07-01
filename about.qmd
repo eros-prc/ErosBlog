@@ -1,0 +1,24 @@
+---
+title: "Eros"
+image: assets/images/avatar/profile.jpg
+about:
+  template: jolla
+  links:
+    - icon: bluesky
+      text: Bluesky
+      href: https://bsky.app/
+    - icon: linkedin
+      text: LinkedIn
+      href: https://linkedin.com
+    - icon: github
+      text: Github
+      href: https://github.com
+
+---
+“为什么塞尚随时都在画圣维克图瓦山呢？这是因为每时每刻的光线都是一种馈赠。
+
+生活，尽管有悲剧，但毕竟还可以是美好的。我已经六十七岁了，青春不再，但我终于感觉自己——因为我不是为了自己而被爱——我感觉自己从未这样年轻，即便一切都快结束了。
+
+是的，毕竟来日方长。”
+
+——阿尔都塞《来日方长》

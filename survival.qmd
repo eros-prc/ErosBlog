@@ -1,0 +1,11 @@
+---
+title: "生存分析"
+listing:
+  contents:
+    - "posts/survival/*/index.qmd"
+  sort: "date desc"
+  type: default
+  categories: true
+---
+
+这里整理 Kaplan-Meier 曲线、Log-rank 检验、Cox 比例风险模型、多重插补和生存预测相关内容。

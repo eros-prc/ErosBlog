@@ -1,0 +1,11 @@
+---
+title: "统计建模"
+listing:
+  contents:
+    - "posts/modeling/*/index.qmd"
+  sort: "date desc"
+  type: default
+  categories: true
+---
+
+这里整理线性回归、Logistic 回归、广义线性模型、模型诊断、变量选择和预测建模相关内容。

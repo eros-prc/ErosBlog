@@ -1,0 +1,11 @@
+---
+title: "R 语言"
+listing:
+  contents:
+    - "posts/r/*/index.qmd"
+  sort: "date desc"
+  type: default
+  categories: true
+---
+
+这里整理 R 语言基础、tidyverse、ggplot2、数据清洗、统计建模和可视化相关内容。

@@ -1,0 +1,8 @@
+/.quarto/
+**/*.quarto_ipynb
+/_site/
+/_freeze/
+# 本地私密日志，不上传公开仓库
+/private-journal/
+/.Rproj.user/
+/.DS_Store

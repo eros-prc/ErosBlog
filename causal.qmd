@@ -1,0 +1,11 @@
+---
+title: "因果推断"
+listing:
+  contents:
+    - "posts/causal/*/index.qmd"
+  sort: "date desc"
+  type: default
+  categories: true
+---
+
+这里整理 PSM、IPTW、DID、IV、AIPW、TMLE、Causal Forest 等因果推断方法。

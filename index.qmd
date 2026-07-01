@@ -1,0 +1,125 @@
+---
+title: "Eros 统计建模与数据科学笔记"
+listing:
+  contents:
+    - posts/*/*/index.qmd
+  sort: "date desc"
+  type: default
+  categories: true
+  sort-ui: false
+  filter-ui: true
+page-layout: full
+---
+
+::: {.home-hero-v2}
+
+::: {.home-hero-copy}
+::: {.eyebrow}
+Eros Blog · Statistics / Modeling / Code / Philosophy
+:::
+
+## 把学习、代码、建模、阅读和普通日子都留下来
+
+这里主要记录统计学、数学建模、编程学习、强化学习、因果推断和一点点哲学阅读。日常也会写进 Mood Journal：代码会报错，作业会堆积，但鼠鼠依旧会继续做梦。
+
+::: {.hero-actions}
+[进入日志](journal.qmd){.hero-button .hero-button-primary}
+[关于我](about.qmd){.hero-button}
+[🎲 随便看看](#){#random-post-button .hero-button .hero-button-random}
+:::
+
+:::
+
+::: {.home-hero-card}
+::: {.status-card-title}
+当前状态
+:::
+
+::: {.status-row}
+📍 身份
+
+**应用统计 · 大二**
+:::
+
+::: {.status-row}
+📚 最近在学
+
+**Quarto / 强化学习 / 数值分析**
+:::
+
+::: {.status-row}
+🧠 长期方向
+
+**统计建模与数据科学**
+:::
+
+::: {.status-row}
+🗓️ 今天
+
+**加载中...**{#today-date}
+:::
+:::
+
+:::
+
+::: {.home-widget-grid}
+
+::: {.mini-widget .quote-widget}
+::: {.widget-label}
+今日一句
+:::
+
+::: {#daily-quote .daily-quote}
+加载中...
+:::
+
+::: {.widget-subtitle}
+刷新页面会随机换一句。
+:::
+:::
+
+::: {.mini-widget}
+::: {.widget-label}
+Mood Journal
+:::
+
+::: {#home-mood-mini .mood-mini}
+正在读取最近心情...
+:::
+
+::: {.widget-subtitle}
+来自 `assets/data/mood.csv`
+:::
+:::
+
+::: {.mini-widget}
+::: {.widget-label}
+学习进度条
+:::
+
+::: {#skill-widget .skill-widget}
+加载中...
+:::
+:::
+
+:::
+
+## 互动小部件
+
+::: {#interactive-lab .interactive-lab}
+互动小部件加载中...
+:::
+
+## 内容导航
+
+::: {#bento-grid-root .bento-grid-root}
+内容导航加载中...
+:::
+
+## 标签云
+
+::: {#tag-cloud-root .tag-cloud-root}
+标签云加载中...
+:::
+
+## 文章列表

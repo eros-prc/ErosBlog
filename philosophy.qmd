@@ -1,0 +1,28 @@
+---
+title: "柏拉图"
+listing:
+  contents:
+    - "posts/philosophy/*/index.qmd"
+  sort: "date desc"
+  type: default
+  categories: true
+---
+
+::: {.hero-section}
+
+::: {.hero-text}
+## 柏拉图作品阅读笔记
+
+这里整理柏拉图相关作品解读，包括《理想国》《会饮篇》《斐多篇》《申辩篇》《克里托篇》等文本的阅读笔记、思想脉络和个人理解。
+
+> 人生未经审视，不值得过。
+
+:::
+
+::: {.hero-image}
+![](assets/images/site/plato.png)
+:::
+
+:::
+
+## 文章列表

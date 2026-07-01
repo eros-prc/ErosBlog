@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-05-20">
+<meta name="description" content="从《会饮篇》中不同人物的爱情观出发，重点理解苏格拉底关于 Eros、缺乏、美与灵魂上升的思想。">
+
+<title>会饮篇 – Blog</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-a0f9fd0d421825b736dc1bbcbcba2219.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../../assets/css/styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Blog</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../index.html"> 
+<span class="menu-text">首页</span></a>
+  </li>  
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">统计学</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-">    
+        <li>
+    <a class="dropdown-item" href="../../../statistics.html">
+ <span class="dropdown-text">统计学基础</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../../modeling.html">
+ <span class="dropdown-text">统计建模</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../../survival.html">
+ <span class="dropdown-text">生存分析</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu--1" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">编程</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu--1">    
+        <li>
+    <a class="dropdown-item" href="../../../r.html">
+ <span class="dropdown-text">R 语言</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../../python.html">
+ <span class="dropdown-text">Python</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu--2" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">专题</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu--2">    
+        <li>
+    <a class="dropdown-item" href="../../../causal.html">
+ <span class="dropdown-text">因果推断</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../../math-modeling.html">
+ <span class="dropdown-text">数学建模</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="../../../journal.html"> 
+<span class="menu-text">日志</span></a>
+  </li>  
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu--3" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">哲学</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu--3">    
+        <li>
+    <a class="dropdown-item" href="../../../althusser.html">
+ <span class="dropdown-text">阿尔都塞</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../../philosophy.html">
+ <span class="dropdown-text">柏拉图</span></a>
+  </li>  
+    </ul>
+  </li>
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../../about.html"> 
+<span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/eros-prc"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">会饮篇</h1>
+                  <div>
+        <div class="description">
+          从《会饮篇》中不同人物的爱情观出发，重点理解苏格拉底关于 Eros、缺乏、美与灵魂上升的思想。
+        </div>
+      </div>
+                          <div class="quarto-categories">
+                <div class="quarto-category">柏拉图</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">May 20, 2026</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#从一场宴会开始eros-到底是什么" id="toc-从一场宴会开始eros-到底是什么" class="nav-link active" data-scroll-target="#从一场宴会开始eros-到底是什么">从一场宴会开始：Eros 到底是什么？</a></li>
+  <li><a href="#斐德罗爱情让人追求勇敢与荣誉" id="toc-斐德罗爱情让人追求勇敢与荣誉" class="nav-link" data-scroll-target="#斐德罗爱情让人追求勇敢与荣誉">斐德罗：爱情让人追求勇敢与荣誉</a></li>
+  <li><a href="#保萨尼亚斯爱情有高低之分" id="toc-保萨尼亚斯爱情有高低之分" class="nav-link" data-scroll-target="#保萨尼亚斯爱情有高低之分">保萨尼亚斯：爱情有高低之分</a></li>
+  <li><a href="#厄律克西马库斯爱情是一种和谐的秩序" id="toc-厄律克西马库斯爱情是一种和谐的秩序" class="nav-link" data-scroll-target="#厄律克西马库斯爱情是一种和谐的秩序">厄律克西马库斯：爱情是一种和谐的秩序</a></li>
+  <li><a href="#阿里斯托芬爱情是寻找失去的另一半" id="toc-阿里斯托芬爱情是寻找失去的另一半" class="nav-link" data-scroll-target="#阿里斯托芬爱情是寻找失去的另一半">阿里斯托芬：爱情是寻找失去的另一半</a></li>
+  <li><a href="#阿伽通爱情是美丽年轻与善" id="toc-阿伽通爱情是美丽年轻与善" class="nav-link" data-scroll-target="#阿伽通爱情是美丽年轻与善">阿伽通：爱情是美丽、年轻与善</a></li>
+  <li><a href="#苏格拉底eros-的本质不是拥有而是追求" id="toc-苏格拉底eros-的本质不是拥有而是追求" class="nav-link" data-scroll-target="#苏格拉底eros-的本质不是拥有而是追求">苏格拉底：Eros 的本质不是拥有，而是追求</a></li>
+  <li><a href="#狄奥提玛eros-介于贫乏与富足之间" id="toc-狄奥提玛eros-介于贫乏与富足之间" class="nav-link" data-scroll-target="#狄奥提玛eros-介于贫乏与富足之间">狄奥提玛：Eros 介于贫乏与富足之间</a></li>
+  <li><a href="#爱真正追求的是什么" id="toc-爱真正追求的是什么" class="nav-link" data-scroll-target="#爱真正追求的是什么">爱真正追求的是什么？</a></li>
+  <li><a href="#爱的阶梯从身体之美到美本身" id="toc-爱的阶梯从身体之美到美本身" class="nav-link" data-scroll-target="#爱的阶梯从身体之美到美本身">爱的阶梯：从身体之美到美本身</a></li>
+  <li><a href="#苏格拉底爱情观的核心爱一个人是为了走向更高的美" id="toc-苏格拉底爱情观的核心爱一个人是为了走向更高的美" class="nav-link" data-scroll-target="#苏格拉底爱情观的核心爱一个人是为了走向更高的美">苏格拉底爱情观的核心：爱一个人，是为了走向更高的美</a></li>
+  <li><a href="#阿尔喀比亚德现实中的爱情充满矛盾" id="toc-阿尔喀比亚德现实中的爱情充满矛盾" class="nav-link" data-scroll-target="#阿尔喀比亚德现实中的爱情充满矛盾">阿尔喀比亚德：现实中的爱情充满矛盾</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<section id="从一场宴会开始eros-到底是什么" class="level2">
+<h2 class="anchored" data-anchor-id="从一场宴会开始eros-到底是什么">从一场宴会开始：Eros 到底是什么？</h2>
+<p>柏拉图的《会饮篇》表面上写的是一场宴会。众人喝酒、谈话，并约定每个人都要发表一篇赞美 Eros 的演说。Eros 通常可以理解为“爱”或“爱神”，但在《会饮篇》中，它显然不只是普通意义上的恋爱感情。</p>
+<p>这篇对话最有意思的地方在于：每个人都在谈爱，但每个人眼中的爱都不一样。有人把爱看成勇敢的来源，有人把爱分成高低贵贱，有人把爱理解为和谐秩序，有人把爱说成寻找另一半，也有人把爱赞美为美德本身。</p>
+<p>不过，这些观点虽然精彩，却更像是一步步铺垫。真正把 Eros 提升到哲学高度的人，是苏格拉底。苏格拉底并没有简单赞美爱情，而是反过来追问：爱到底意味着什么？如果爱是对某物的追求，那么爱者是否正是因为缺少它，才会去爱它？</p>
+<p>也正是在这个问题上，《会饮篇》从一场关于爱情的谈话，变成了关于欲望、缺乏、美、善与灵魂上升的哲学讨论。</p>
+</section>
+<section id="斐德罗爱情让人追求勇敢与荣誉" class="level2">
+<h2 class="anchored" data-anchor-id="斐德罗爱情让人追求勇敢与荣誉">斐德罗：爱情让人追求勇敢与荣誉</h2>
+<p>斐德罗是第一个发言的人。他认为 Eros 是最古老、最值得尊敬的神之一，因为爱情能够激发人身上最好的品质。</p>
+<p>在他的理解里，爱会让人产生荣誉感。一个人在所爱之人面前，会更害怕表现得卑劣、懦弱和不光彩。相反，他会希望自己显得勇敢、高尚、值得被爱。所以，爱情在斐德罗这里不是单纯的情绪，而是一种道德力量。</p>
+<p>这种爱情观其实很接近我们今天常说的“好的爱情让人变好”。因为爱一个人，所以愿意承担责任；因为在意对方的目光，所以不愿意让自己堕落。斐德罗强调的不是爱情中的甜蜜，而是爱情带来的勇气和自我要求。</p>
+<p>不过，他的观点还停留在比较外在的层面。爱情让人勇敢，是因为人希望在爱人面前保持荣誉。也就是说，爱情的价值主要体现在社会评价和英雄行为上。它还没有深入到“人为什么会爱”这个问题。</p>
+</section>
+<section id="保萨尼亚斯爱情有高低之分" class="level2">
+<h2 class="anchored" data-anchor-id="保萨尼亚斯爱情有高低之分">保萨尼亚斯：爱情有高低之分</h2>
+<p>保萨尼亚斯的发言比斐德罗更进一步。他认为，不能笼统地赞美所有爱情，因为爱情本身有高低之分。</p>
+<p>他区分了两种爱：一种是低级的、只追求身体欲望的爱；另一种是高级的、重视灵魂和德性的爱。前一种爱容易短暂、功利、变化无常，只关注外貌和身体吸引；后一种爱则更稳定，因为它关注的是人的品格、思想和灵魂。</p>
+<p>这个观点很重要，因为它提醒我们：并不是所有打着“爱”的名义的关系都值得肯定。有些所谓的爱，本质上只是占有、欲望或短暂的新鲜感；而真正较高层次的爱，应该帮助人变得更有德性，更能认识自己，也更能成就对方。</p>
+<p>保萨尼亚斯的思想已经开始接近苏格拉底。因为他也意识到，爱情不能停留在身体层面，真正值得追求的是灵魂层面的美。不过，他依然主要是在区分爱情的类型，还没有进一步说明为什么人会从身体之爱走向灵魂之爱。</p>
+</section>
+<section id="厄律克西马库斯爱情是一种和谐的秩序" class="level2">
+<h2 class="anchored" data-anchor-id="厄律克西马库斯爱情是一种和谐的秩序">厄律克西马库斯：爱情是一种和谐的秩序</h2>
+<p>厄律克西马库斯是一位医生，所以他的发言带有明显的医学和自然哲学色彩。他把 Eros 的范围扩展得很大，不只把它看作人与人之间的情感，还把它看成自然、身体、音乐和宇宙中的一种和谐力量。</p>
+<p>在他看来，健康的身体需要冷热、干湿等因素协调；音乐需要高低音之间形成和谐；四季运行也需要适当的秩序。同样，爱情也不是越强烈越好，而是需要节制、平衡和协调。</p>
+<p>这种爱情观比较理性。它不是从浪漫出发，而是从秩序出发。厄律克西马库斯提醒我们，爱如果没有节制，就可能变成混乱；欲望如果没有秩序，就可能伤害自己和他人。真正好的爱，应该像健康的身体和和谐的音乐一样，让不同部分达到平衡。</p>
+<p>不过，这种观点也有局限。它把爱情说得很宏大、很有秩序，却少了一点具体的人性冲突。现实中的爱往往并不总是和谐的，它可能包含渴望、痛苦、嫉妒、失控和自我矛盾。这个部分要到后面阿尔喀比亚德出场时才会被重新揭示出来。</p>
+</section>
+<section id="阿里斯托芬爱情是寻找失去的另一半" class="level2">
+<h2 class="anchored" data-anchor-id="阿里斯托芬爱情是寻找失去的另一半">阿里斯托芬：爱情是寻找失去的另一半</h2>
+<p>阿里斯托芬的发言最有故事感，也最接近普通人对爱情的想象。他讲了一个著名的神话：人最初并不是现在这样，而是完整的圆形生命。后来因为人类冒犯神灵，被宙斯劈成两半。于是，每个人都在世界上寻找自己失去的另一半。</p>
+<p>在这个故事里，爱情的本质就是对完整的渴望。人之所以爱，是因为觉得自己不完整；遇到某个人时，仿佛找回了失去的部分，于是希望与对方重新结合。</p>
+<p>这种爱情观非常浪漫。它解释了为什么爱情常常带有一种强烈的命运感：好像某个人不是偶然出现的，而是本来就应该属于自己。它也解释了为什么人在爱情中会渴望亲密、陪伴和融合。</p>
+<p>但从苏格拉底的角度看，阿里斯托芬的观点还不够。因为它把爱情理解为寻找“自己的另一半”，重点仍然是让自己重新完整。这样的爱虽然动人，却容易把对方变成满足自我缺失的对象。苏格拉底后面要提出的，是一种更高层次的爱：爱不是只为了补全自己，而是为了通过美去追求善和不朽。</p>
+</section>
+<section id="阿伽通爱情是美丽年轻与善" class="level2">
+<h2 class="anchored" data-anchor-id="阿伽通爱情是美丽年轻与善">阿伽通：爱情是美丽、年轻与善</h2>
+<p>阿伽通的发言最华丽，也最像一篇正式的赞美诗。他把 Eros 描绘成最年轻、最美丽、最温柔、最善良的神。在他看来，爱本身就是美的，它带来智慧、勇敢、节制和正义。</p>
+<p>阿伽通的爱情观代表了人们对爱情最理想化的一面。人在爱中会感到世界变得柔和，语言变得诗意，生活变得明亮。爱情似乎天然与美好、青春、幸福联系在一起。</p>
+<p>但是，正是这种过度赞美，引出了苏格拉底的反问。苏格拉底并不满足于把 Eros 说成“美的”“善的”。他要问的是：如果 Eros 是对美的爱，那么它本身是否已经拥有美？如果它已经拥有美，为什么还要追求美？</p>
+<p>这个问题非常关键。因为它直接推翻了阿伽通式的赞美。苏格拉底要说明的是：Eros 并不是美本身，而是对美的渴望。它不是圆满，而是因为缺乏圆满，所以不断追求。</p>
+</section>
+<section id="苏格拉底eros-的本质不是拥有而是追求" class="level2">
+<h2 class="anchored" data-anchor-id="苏格拉底eros-的本质不是拥有而是追求">苏格拉底：Eros 的本质不是拥有，而是追求</h2>
+<p>苏格拉底的发言是《会饮篇》的核心。他一开始并没有像前面几个人那样直接赞美 Eros，而是用追问的方式改变了整个讨论方向。</p>
+<p>他的基本问题是：爱是不是总是爱某个对象？如果一个人爱某物，那么他是不是还没有完全拥有这个东西？</p>
+<p>这个问题看似简单，却非常有力量。比如，一个人渴望智慧，正说明他还不完全智慧；一个人追求美，正说明他还没有真正拥有美。如果 Eros 是对美的爱，那么 Eros 本身就不能说是完全美的。它之所以爱美，恰恰是因为它缺少美。</p>
+<p>这样一来，Eros 的形象就和阿伽通所说的完全不同了。阿伽通认为 Eros 是完美的神，而苏格拉底认为 Eros 不是完满者，而是追求者。它既不是彻底贫乏，也不是完全富足，而是处在二者之间。</p>
+<p>这也是苏格拉底观点最深刻的地方：爱不是已经拥有，而是意识到自己没有；爱不是满足，而是渴望；爱不是终点，而是一种向上的运动。</p>
+</section>
+<section id="狄奥提玛eros-介于贫乏与富足之间" class="level2">
+<h2 class="anchored" data-anchor-id="狄奥提玛eros-介于贫乏与富足之间">狄奥提玛：Eros 介于贫乏与富足之间</h2>
+<p>苏格拉底接着借女祭司狄奥提玛之口，讲出了更完整的 Eros 理论。</p>
+<p>狄奥提玛认为，Eros 不是神，而是介于神与人之间的精灵。神是完满的，不需要追求；完全无知的人也不会追求智慧，因为他甚至不知道自己无知。真正会追求智慧的人，处在中间状态：他知道自己缺少智慧，所以才会渴望智慧。</p>
+<p>Eros 正是这种中间状态的象征。</p>
+<p>狄奥提玛还讲到 Eros 的出身：它是“贫乏”和“富足”的孩子。因此，Eros 一方面贫乏、不满足、总是缺少某种东西；另一方面又机智、勇敢、善于追求，永远想办法靠近美好的事物。</p>
+<p>这个解释非常形象。爱情为什么常常既让人幸福，又让人痛苦？因为爱本身就是缺乏与追求的结合。一个人因为缺少，所以渴望；因为渴望，所以行动；因为行动，所以可能接近更高的东西。</p>
+<p>在这里，苏格拉底其实把爱情和哲学联系起来了。哲学也是一种处在无知和智慧之间的状态。哲学家不是已经拥有智慧的人，而是爱智慧、追求智慧的人。正因为如此，Eros 和哲学有着相似的结构：它们都不是占有，而是追求。</p>
+</section>
+<section id="爱真正追求的是什么" class="level2">
+<h2 class="anchored" data-anchor-id="爱真正追求的是什么">爱真正追求的是什么？</h2>
+<p>在狄奥提玛看来，人表面上爱美，实际上追求的是善。更准确地说，人希望“善永远属于自己”。</p>
+<p>这句话让爱情的意义变得更深。普通爱情往往表现为对某个人的喜欢、迷恋或占有，但苏格拉底认为，这些只是爱情的表层。更深层的爱，是人对美好事物的追求，是希望自己能够拥有善，并且让这种善持续下去。</p>
+<p>因此，Eros 和“不朽”有关。</p>
+<p>人是有限的，会衰老，也会死亡。但人又不甘心完全消失，所以人会通过不同方式追求不朽。身体层面上，人通过生育延续生命；精神层面上，人通过思想、作品、教育、制度和美德延续自己。</p>
+<p>这就把爱情从个人关系提升到了生命意义的层面。爱不是简单地“我想和你在一起”，而是人在有限生命中对永恒、美好和不朽的追求。</p>
+</section>
+<section id="爱的阶梯从身体之美到美本身" class="level2">
+<h2 class="anchored" data-anchor-id="爱的阶梯从身体之美到美本身">爱的阶梯：从身体之美到美本身</h2>
+<p>苏格拉底观点中最重要的部分，是狄奥提玛提出的“爱的阶梯”。</p>
+<p>人最初往往从爱一个具体的美丽身体开始。这是爱情最普通、最自然的起点。一个人被另一个人的外貌、气质或身体吸引，于是产生爱慕。</p>
+<p>但真正的爱不能停在这里。一个人应该进一步认识到，美并不只存在于某一个身体之中。许多身体都可以是美的，因此他会从迷恋一个身体，走向欣赏所有身体中的美。</p>
+<p>再往上，他会发现灵魂之美比身体之美更重要。一个人的思想、品格、勇气、节制和智慧，比外貌更持久，也更值得珍视。</p>
+<p>继续上升之后，他会看到制度、法律、知识和思想中的美。最后，他不再只是爱某个具体的人，也不只是爱某种具体的美，而是抵达对“美本身”的认识。</p>
+<p>这就是柏拉图式爱情最核心的地方：具体的爱情不是被否定，而是被看作通向更高之美的起点。身体之美不是错误，但如果人只停留在身体吸引上，就没有真正理解 Eros 的意义。真正的 Eros 应该推动灵魂上升，让人从具体的美走向普遍的美，从感性的爱走向理性的理解。</p>
+</section>
+<section id="苏格拉底爱情观的核心爱一个人是为了走向更高的美" class="level2">
+<h2 class="anchored" data-anchor-id="苏格拉底爱情观的核心爱一个人是为了走向更高的美">苏格拉底爱情观的核心：爱一个人，是为了走向更高的美</h2>
+<p>如果把苏格拉底的爱情观概括出来，我觉得可以这样说：爱不是占有一个人，而是通过一个人被美所引导。</p>
+<p>这和普通恋爱观有很大不同。现实中我们常常把爱情理解成两个人之间的关系：我喜欢你，你是否喜欢我；我们能不能在一起；这段关系能不能稳定。但苏格拉底更关心的是：这个爱有没有让灵魂向上？它有没有让人认识更高的美、善和智慧？</p>
+<p>在他的观点里，具体的人当然重要。因为我们往往正是通过某一个具体的人，第一次强烈地感受到美。可是，如果爱只停留在“我要拥有这个人”，那它就容易变成狭隘的欲望。真正更高的爱，是从这个人身上看见美，再通过这种美走向更广阔的精神世界。</p>
+<p>所以，苏格拉底并不是简单反对恋爱，也不是否定身体吸引。他只是认为，爱不能停在最低层次。好的爱情应该让人变得更清醒、更自由、更接近智慧，而不是让人沉溺在占有、嫉妒和欲望之中。</p>
+</section>
+<section id="阿尔喀比亚德现实中的爱情充满矛盾" class="level2">
+<h2 class="anchored" data-anchor-id="阿尔喀比亚德现实中的爱情充满矛盾">阿尔喀比亚德：现实中的爱情充满矛盾</h2>
+<p>在苏格拉底讲完之后，阿尔喀比亚德突然闯入宴会。他的出现非常重要，因为他把前面抽象的爱情理论重新拉回到了现实。</p>
+<p>阿尔喀比亚德讲述了自己对苏格拉底的迷恋。他被苏格拉底吸引，渴望接近苏格拉底，甚至希望用自己的美貌换取苏格拉底的智慧。但苏格拉底没有按照普通欲望的方式回应他。</p>
+<p>阿尔喀比亚德的爱是复杂的。他既崇拜苏格拉底，又感到挫败；既被苏格拉底的智慧吸引，又无法完全摆脱自己的虚荣和欲望。他的出现说明，现实中的 Eros 并不总是高尚、纯粹和理性的。爱也可能让人痛苦、嫉妒、失控，甚至看见自己内心的不自由。</p>
+<p>但这恰恰反过来证明了苏格拉底观点的重要性。Eros 本身只是一种力量，它可以把人拉向更高处，也可以让人陷入混乱。关键在于，人能不能把爱的冲动转化为自我认识和精神提升。</p>
+<p>苏格拉底像一面镜子，让阿尔喀比亚德看见自己的缺乏。也正因为如此，苏格拉底本人几乎成为 Eros 的化身：他不满足别人表面的欲望，而是不断唤醒别人对智慧和美德的追求。</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script>
+(function () {
+  var version = "20260701-interactive-fixed";
+  var candidates = [
+    "assets/js/site-widgets.js",
+    "../assets/js/site-widgets.js",
+    "../../assets/js/site-widgets.js",
+    "../../../assets/js/site-widgets.js",
+    "../../../../assets/js/site-widgets.js"
+  ];
+  var i = 0;
+  function loadNext() {
+    if (i >= candidates.length) return;
+    var script = document.createElement("script");
+    script.src = candidates[i++] + "?v=" + version;
+    script.onerror = loadNext;
+    document.body.appendChild(script);
+  }
+  loadNext();
+})();
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

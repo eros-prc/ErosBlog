@@ -1,0 +1,11 @@
+---
+title: "数学建模"
+listing:
+  contents:
+    - "posts/math-modeling/*/index.qmd"
+  sort: "date desc"
+  type: default
+  categories: true
+---
+
+这里整理数学建模、运筹优化、线性规划、数值计算、MATLAB、LINGO 和 Mathematica 相关内容。

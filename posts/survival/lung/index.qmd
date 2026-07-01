@@ -1,0 +1,703 @@
+---
+title: "肺癌数据生存分析"
+subtitle: "缺失处理、多重插补与 Cox 比例风险模型"
+author: "Eros"
+date: 2026-05-30
+lang: zh
+
+# 关键：设置空摘要，禁止自动抓取正文
+abstract: ""
+
+format:
+  html:
+    theme: cosmo # 美观的HTML主题（可选，推荐）
+    toc: true # 显示目录（方便读者阅读长文档）
+    toc-depth: 3 # 目录显示3级标题
+    code-fold: true # 代码块可折叠（让页面更整洁）
+    code-tools: true # 显示代码复制、运行按钮
+    number-sections: true # 标题自动编号
+    fig-width: 8 # 图表宽度
+    fig-height: 6 # 图表高度
+execute:
+  echo: true
+  warning: false
+  message: false
+  error: false
+categories: [生存分析, R语言, 统计学笔记]
+image: "image.png"
+description: "本文基于肺癌患者生存数据，完整展示从缺失值处理、多重插补到 Cox 比例风险模型构建的分析流程。"
+---
+
+本文基于肺癌患者生存数据，完整展示了从缺失值处理、多重插补到Cox比例风险模型构建的全流程分析，探讨了性别、体能状态等因素对患者生存预后的影响，并通过PH假设检验完成模型优化，为生存分析方法的应用提供参考。
+
+# 导入包
+
+```{r}
+library(tidyverse)
+library(naniar)
+library(patchwork)
+library(survival)
+library(ggpubr)
+library(survminer)
+library(mice)
+library(gridExtra)
+library(scales)
+```
+
+## 查看数据
+
+```{r}
+lung %>% head()
+```
+
+```{r}
+lung %>% 
+  ggplot(
+    aes(
+      x=time,fill=factor(sex)
+        )
+    )+
+  geom_histogram()+
+  theme_classic2()
+```
+
+-   观察直方图可以发现生存时间总体呈现一个看似偏态的分布，且男女生可能有较大差异。后期再进行检验
+
+## data transform
+
+观察到最终状态未为常见的0/1，而是1/2.进行修改
+
+```{r}
+lung_clean <- 
+  lung %>% 
+  mutate(
+    status=if_else(status==2,1,0)
+    #status = recode(status, `1` = 0, `2` = 1) 更简洁的写法
+  ) %>% 
+  as.tibble()
+```
+
+| 变量名    | 含义                                           |
+|-----------|------------------------------------------------|
+| time      | 生存时间，单位：天                             |
+| status    | 结局状态                                       |
+| age       | 年龄（岁）                                     |
+| sex       | 性别                                           |
+| inst      | 入组机构编号（1–16），多中心研究标识           |
+| ph.ecog   | 医生评估 ECOG 体能状态（0–3，越高越差）        |
+| ph.karno  | 医生评估 Karnofsky 功能评分（0–100，越高越好） |
+| pat.karno | 患者自评 Karnofsky 评分                        |
+| meal.cal  | 每日摄入卡路里（营养状况）                     |
+| wt.loss   | 最近 6 个月体重下降（磅）                      |
+
+# 缺失值分析
+
+## 缺失值统计
+
+```{r}
+lung_clean %>% 
+  miss_var_summary()
+```
+
+-   可以看出meal.cal（每日摄入卡路里）为缺失率最高的的数据高达20.6%，在临床上几乎可以确定其为非随机缺失 MNAR，可能是由于病人病危无法进食等导致。可能和结果存在显著相关性，若直接剔除可能对结果产生较大影响。
+
+-   wt.loss（最近 6 个月体重下降）仅损失14个样本，可以推断其大概是随机缺失 MAR，可以选择mice插值
+
+-   其余缺失值都很少 ，可以直接删除或也使用插值法，对结果影响不大。
+
+## 缺失值可视化
+
+```{r}
+lung_clean %>% 
+  gg_miss_upset()
+```
+
+```{r}
+p1 <- 
+  lung_clean %>% 
+  gg_miss_var()
+p2 <- 
+  lung_clean %>% 
+  gg_miss_which()
+p3 <- 
+  lung_clean %>% 
+    ggplot(aes(x=wt.loss,y=meal.cal))+
+  geom_miss_point()+theme_classic2()
+
+(p1|p2)/p3
+```
+
+-   通过上图可以看出，缺失值基本都是单个出现，并没有显著关联性。即都是只有meal.cal（每日摄入卡路里）和wt.loss（最近 6 个月体重下降）单独缺失。
+-   缺失样本（红色）的wt.loss分布与无缺失样本的分布范围大致重合，没有出现 “缺失样本集中在wt.loss极高 / 极低区域” 的系统性偏差。
+
+## Little's missing completely at random (MCAR) test
+
+```{r}
+lung_clean %>% 
+  mcar_test()
+```
+
+| 列名 | 结果 | 含义 |
+|------------------------|------------------------|------------------------|
+| statistic | 61.97617 | Little 检验的卡方统计量，用于和卡方分布比较计算 p 值 |
+| df | 68 | 检验的自由度，由变量数和缺失模式数决定 |
+| p.value | 0.6826042 | 检验的 p 值，核心结果 |
+| missing.patterns | 9 | 数据中存在的不同缺失模式数量 |
+
+-   **原假设 H₀**：数据的缺失机制是 **完全随机缺失（MCAR）**
+
+-   **备择假设 H₁**：数据的缺失机制 **不是 MCAR**（即 MAR 或 MNAR）
+
+检验最后为模糊与0.68并不显著处于模糊域之中，无法接受也无法拒绝原假设。接下来通过观察图像和显著性检验来检测meal.cal（每日摄入卡路里）对结果有没有什么影响。
+
+## 缺失值生存性分析
+
+```{r}
+lung_clean <- 
+lung_clean %>% 
+  mutate(
+    is_na=recode(
+      meal.cal,
+      .missing="缺失值",
+      .default="未缺失")
+  )
+```
+
+```{r}
+fit <- survfit(
+  formula = Surv(time, status) ~ is_na,
+  data = lung_clean
+)
+
+sv_p1 <- 
+ggsurvplot(
+  fit,
+  pval = T, #p值
+  conf.int = T,  #置信区间
+  risk.table = TRUE, 
+  risk.table.col = "strata", # 根据分层更改风险表颜色
+  linetype = "strata", # 根据分层更改线型
+  surv.median.line = "hv", # 同时显示垂直和水平参考线
+  ggtheme = theme_classic(), # 更改ggplot2的主题
+  palette = c("#E7B800", "#2E9FDF"),
+  legend="none",
+  title="生存函数"
+  )
+
+  
+sv_p2 <- 
+  ggsurvplot(
+  fit,
+  #pval = T, #p值
+  conf.int = T,  #置信区间
+  #risk.table = TRUE, 
+  risk.table.col = "strata", # 根据分层更改风险表颜色
+  linetype = "strata", # 根据分层更改线型
+  surv.median.line = "hv", # 同时显示垂直和水平参考线
+  ggtheme = theme_classic(), # 更改ggplot2的主题
+  palette = c("#E7B800", "#2E9FDF"),
+  legend = "none",
+  fun ="event",
+  title="风险函数")
+
+  
+sv_p3 <- 
+  ggsurvplot(
+  fit,
+  #pval = T, #p值
+  conf.int = T,  #置信区间
+  #risk.table = TRUE, 
+  risk.table.col = "strata", # 根据分层更改风险表颜色
+  linetype = "strata", # 根据分层更改线型
+  surv.median.line = "hv", # 同时显示垂直和水平参考线
+  ggtheme = theme_classic(), # 更改ggplot2的主题
+  palette = c("#E7B800", "#2E9FDF"),
+  legend = "none",
+  fun ="cumhaz",
+  title="风险累计函数")
+
+# ----------------------
+# 关键1：定义图例提取函数 + 优化图例显示
+# ----------------------
+get_legend <- function(ggplot_obj) {
+  tmp <- ggplot_gtable(ggplot_build(ggplot_obj))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  tmp$grobs[[leg]]
+}
+
+# 提取图例并设置清晰标签（避免截断）
+legend_plot <- sv_p1$plot +
+  labs(color = "分组", linetype = "分组") +  # 图例标题
+  scale_color_manual(values = c("#E7B800", "#2E9FDF"),labels = c("缺失值", "未缺失")) +  # 完整标签名
+  scale_linetype_manual(values = c("solid", "dashed"),labels = c("缺失值", "未缺失"))
+legend <- get_legend(legend_plot + theme(legend.position = "bottom", 
+                                         legend.key.width = unit(1.5, "cm")))  # 加宽图例键
+
+# ----------------------
+# 关键2：组合sv_p1的图 + 风险表（完整右侧图）
+# ----------------------
+sv_p1_complete <- sv_p1$plot / sv_p1$table +
+  plot_layout(heights = c(0.8, 0.2))  # 图:表 = 4:1比例
+
+# ----------------------
+# 关键3：拼图 + 底部公共图例（最终布局）
+# ----------------------
+# 左边上下两图
+left_col <- sv_p2$plot / sv_p3$plot +
+  plot_layout(heights = c(0.5, 0.5))  # 上下图比例1:1
+
+# 左右两列组合
+top_row <- left_col | sv_p1_complete +
+  plot_layout(widths = c(0.5, 0.5))  # 左右列比例1:1
+
+# 最后添加底部图例
+final_plot <- (top_row / legend) +
+  plot_layout(heights = c(0.9, 0.1))  # 图:图例 = 9:1比例
+
+final_plot
+```
+
+-   虽然最终按照进食量是否为缺失值进行分组对比的生存曲线，经过log-rank检验，结果并不显著无法拒绝原假设，但是p=0.24，依然有很强的把握认为meal.cal缺失可能影响患者生存时间，因此对最终缺失值采取插补策略，并不直接删去。
+
+<!-- -->
+
+-   缺失组的中位生存时间约为 300 天，未缺失组的中位生存时间约为 **270 天**
+
+-   虚线标注了 50% 死亡事件的时间点，未缺失组更早达到 50% 死亡，和中位生存时间的差异一致
+
+## 插值
+
+### 补充知识：
+
+0.  一般使用pmm是最好的选择
+
+<!-- -->
+
+1.  数据存在强非线性 / 复杂交互效应 当变量间关系高度非线性（如 U 型关系）或存在复杂交互作用时，随机森林（rf） 或CART（cart） 可能更优，它们能捕捉 PMM 无法建模的非线性模式。 适用案例：肿瘤大小与生存时间呈非线性关系，且与治疗方式存在交互效应
+2.  分类变量插值 PMM 仅适用于连续变量，分类变量必须选择对应方法： 二分类 → logreg（逻辑回归） 无序多分类 → polyreg（多项式回归） 有序多分类 → polr（比例优势模型）
+3.  高维稀疏数据（如基因表达数据） 当变量数远大于样本数（p \>\> n）时，PMM 的回归模型可能不稳定，此时可考虑： rf（随机森林，对高维数据有天然优势） lda（线性判别分析，降维后插值）
+4.  特殊研究设计（如加权抽样、纵向数据） 加权抽样数据 → midastouch（加权 PMM） 纵向数据 → mice的2l.norm（两水平正态模型）等专门方法
+
+因此本文选择如下方法：
+
+-   连续变量（meal.cal, wt.loss）：pmm
+
+-   分类变量（如 sex, ph.ecog）：logreg/删除
+
+### 具体操作
+
+```{r}
+imp <- mice(
+  lung_clean,
+  method = "pmm", # 保持PMM不变
+  m = 5,
+  maxit = 15, # 增加迭代次数，让模型收敛更好
+  printFlag = FALSE
+)
+
+m1 <- 
+bwplot(
+  imp, 
+  ~ meal.cal + wt.loss,
+  scales = list(x = list(relation = "free")),
+  col = c("#377eb8", "#e41a1c"), # 标准红蓝配色
+  main = "肺癌数据：观测值与插补值分布对比",
+  ylab = "变量取值"
+)
+
+m2 <- 
+densityplot(
+  imp, 
+  ~ meal.cal + wt.loss,
+  col = c("#377eb8", "#e41a1c"), # 标准红蓝配色
+  main = NULL,
+  ylab = "变量取值"
+)
+
+m3 <- plot(
+  imp, 
+  c("meal.cal", "wt.loss"),
+  main = "MICE 插补迭代收敛诊断"
+)
+
+grid.arrange(
+  m1, m2, 
+  nrow = 2,
+  heights = c(2, 2)
+)
+
+```
+
+```{r}
+m3
+```
+
+```{r}
+m4 <- 
+stripplot(
+  imp,
+  meal.cal + wt.loss ~ .imp,
+  pch = 20,
+  cex = 1.2,
+  main = "不同插补数据集中的插补值分布"
+)
+m4
+```
+
+-   收敛图：没有明显单调上升/下降趋势，整体可以接受；
+
+-   箱线图：meal.cal 和 wt.loss 插补值都在合理范围内；
+
+-   密度图：meal.cal 很好，wt.loss 波动稍大，但没有明显失败。
+
+-   插补值分布与原始观测值分布基本一致，没有明显异常，插补效果较好。
+
+```{r}
+xy1 <- 
+  xyplot(
+  imp,
+  meal.cal ~ age,
+  pch = 20,
+  cex = 1.1,
+  main = "meal.cal 与 age 的插补关系检查"
+)
+
+xy2 <- 
+  xyplot(
+  imp,
+  wt.loss ~ age,
+  pch = 20,
+  cex = 1.1,
+  main = "wt.loss 与 age 的插补关系检查"
+)
+
+grid.arrange(
+  xy1, xy2, 
+  ncol = 2
+)
+```
+
+-   wt.loss 的插补值总体位于原始观测值分布范围内，未出现明显超出观测数据结构的异常点。但由于该变量本身波动较大，插补值在不同年龄段的离散程度较高，提示 wt.loss 的插补不确定性相对较大。
+
+-   `meal.cal` 的插补值与原始观测值在年龄维度上的分布基本一致，未发现插补值在特定年龄段异常聚集或偏离，说明插补过程基本保留了 `meal.cal` 与 `age` 的关系。
+
+总体判断：
+
+MICE-PMM 插补结果整体合理。`meal.cal` 和 `wt.loss` 的插补值均落在原始观测值的合理范围内，且在不同插补数据集之间没有出现明显异常波动。`meal.cal` 的插补分布与原始数据较为一致，插补效果较好；`wt.loss` 的插补值也总体合理，但变量本身离散程度较高，插补不确定性相对更大。结合前面的密度图、箱线图和收敛图，可以认为当前插补结果基本可用于后续生存分析。
+
+# cox回归模型结果检验
+
+## 插值数据cox回归
+
+```{r}
+fit_imp <- with(
+  imp,
+  coxph(Surv(time, status) ~ meal.cal + wt.loss + age + sex + ph.karno + ph.ecog)
+)
+
+pool_result <- pool(fit_imp)
+
+summary(pool_result)
+```
+
+## 原数据cox回归
+
+```{r}
+fit_cc <- coxph(
+  Surv(time, status) ~ meal.cal + wt.loss + age + sex + ph.karno + ph.ecog,
+  data = lung_clean,
+  na.action = na.omit
+)
+
+summary(fit_cc)
+```
+
+结论：为评估多重插补结果对后续 Cox 回归分析的影响，本文比较了多重插补后的 pooled Cox 模型与完整案例分析结果。结果显示，两种模型中各变量的回归系数方向基本一致，且显著变量保持一致。sex 和 ph.ecog 在两种模型中均具有统计学意义，其中 ph.ecog 的回归系数为正，提示 ECOG 评分越高，死亡风险越高；sex 的回归系数为负，提示女性相对于男性死亡风险较低。meal.cal、wt.loss 和 age 在两种模型中均未达到统计学显著性。
+
+完整案例分析删除了 58 个含缺失值的观测，而多重插补分析能够保留更多样本信息，并考虑插补带来的不确定性。总体来看，多重插补结果与完整案例分析结果一致性较好，说明当前 MICE-PMM 插补结果在模型层面具有较好的稳定性。
+
+```{r}
+#将imp转换为tibble数据
+lung_imp1 <- complete(imp, 1) |> 
+  as_tibble()
+```
+
+## cox假设检验（PH检验）
+
+风险比假设：不同组之间的风险比 HR 随时间保持不变。
+
+若假设不成立：
+
+-   如果变量不是主要研究变量，可以保留并说明局限
+
+-   加入时间交互项
+
+-   分层 Cox 模型
+
+```{r}
+ph_results <- map_dfr(1:imp$m, function(i) {
+  
+  dat_i <- complete(imp, i)
+  
+  fit_i <- coxph(
+    Surv(time, status) ~ meal.cal + wt.loss + age + sex + ph.karno + ph.ecog,
+    data = dat_i
+  )
+  
+  ph_i <- cox.zph(fit_i)
+  
+  as.data.frame(ph_i$table) %>%
+    rownames_to_column("term") %>%
+    mutate(.imp = i) %>%
+    select(.imp, term, chisq, df, p)
+})
+
+ph_results
+ph_summary <- ph_results %>%
+  group_by(term) %>%
+  summarise(
+    min_p = min(p, na.rm = TRUE),
+    median_p = median(p, na.rm = TRUE),
+    max_p = max(p, na.rm = TRUE),
+    n_sig = sum(p < 0.05, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ph_summary
+#备注：这几张是 Schoenfeld 残差图，用来判断 Cox 模型的比例风险假设 PH assumption 是否成立。
+#如果实线大致水平，说明该变量的 HR 基本不随时间变化，PH 假设较好；
+#如果实线随时间明显上升或下降，说明该变量效应随时间变化，可能违反 PH 假设。
+```
+
+-   基于多重插补数据集分别进行 Cox 比例风险假设检验，并对各插补数据集的检验结果进行汇总。结果显示，完整模型的 GLOBAL 检验在 5 个插补数据集中均达到显著水平，提示模型整体存在比例风险假设违反。进一步分析各协变量发现，meal.cal 和 ph.karno 在所有插补数据集中均显示显著违反 PH 假设，而 age、wt.loss、sex 和 ph.ecog 均未显示明显违反。由于主要显著变量 sex 和 ph.ecog 的 PH 假设基本成立，模型核心结论仍具有一定稳定性。但 ph.karno 与 ph.ecog 均反映患者体能状态，且 ph.karno 稳定违反 PH 假设，因此后续可考虑去除 ph.karno，保留 ph.ecog 构建更简洁且假设更合理的模型。
+
+## 去掉ph.karno的多重插补模型
+
+```{r}
+fit_imp_no_karno <- with(
+  imp,
+  coxph(Surv(time, status) ~ meal.cal + wt.loss + age + sex + ph.ecog)
+)
+
+pool_no_karno <- pool(fit_imp_no_karno)
+
+summary(pool_no_karno)
+```
+
+```{r}
+ph_results_no_karno <- map_dfr(1:imp$m, function(i) {
+  
+  dat_i <- complete(imp, i)
+  
+  fit_i <- coxph(
+    Surv(time, status) ~ meal.cal + wt.loss + age + sex + ph.ecog,
+    data = dat_i
+  )
+  
+  ph_i <- cox.zph(fit_i)
+  
+  as.data.frame(ph_i$table) %>%
+    rownames_to_column("term") %>%
+    mutate(.imp = i) %>%
+    select(.imp, term, chisq, df, p)
+})
+
+ph_summary_no_karno <- ph_results_no_karno %>%
+  group_by(term) %>%
+  summarise(
+    min_p = min(p, na.rm = TRUE),
+    median_p = median(p, na.rm = TRUE),
+    max_p = max(p, na.rm = TRUE),
+    n_sig = sum(p < 0.05, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ph_summary_no_karno
+```
+
+-   ph.karno 已经被去掉后，PH 问题明显改善； 但是 meal.cal 仍然在 5 个插补数据集中都违反 PH 假设。
+
+-   说明：ph.karno 确实是原模型 PH 假设问题的重要来源之一。去掉它后模型整体改善，但 meal.cal 仍然存在时间依赖问题。
+
+## 去掉 meal.cal 的敏感性分析
+
+```{r}
+fit_imp_final2 <- with(
+  imp,
+  coxph(Surv(time, status) ~ wt.loss + age + sex + ph.ecog)
+)
+
+summary(pool(fit_imp_final2))
+```
+
+```{r}
+ph_results_final2 <- map_dfr(1:imp$m, function(i) {
+  
+  dat_i <- complete(imp, i)
+  
+  fit_i <- coxph(
+    Surv(time, status) ~ wt.loss + age + sex + ph.ecog,
+    data = dat_i
+  )
+  
+  ph_i <- cox.zph(fit_i)
+  
+  as.data.frame(ph_i$table) %>%
+    rownames_to_column("term") %>%
+    mutate(.imp = i) %>%
+    select(.imp, term, chisq, df, p)
+})
+
+ph_summary_final2 <- ph_results_final2 %>%
+  group_by(term) %>%
+  summarise(
+    min_p = min(p, na.rm = TRUE),
+    median_p = median(p, na.rm = TRUE),
+    max_p = max(p, na.rm = TRUE),
+    n_sig = sum(p < 0.05, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ph_summary_final2
+```
+
+-   基于多重插补后的 Cox 回归结果，最终模型纳入 wt.loss、age、sex 和 ph.ecog。结果显示，sex和 ph.ecog 与患者生存风险显著相关，而 wt.loss 和 age 未达到统计学显著性。若 sex 按原始 lung 数据编码为 1 = 男性、2 = 女性，则女性患者死亡风险低于男性。ph.ecog 的回归系数为正，提示 ECOG 评分越高，患者死亡风险越高。 进一步对各插补数据集分别进行比例风险假设检验，结果显示最终模型中所有协变量及整体 GLOBAL 检验均未显著违反 PH 假设，说明该模型较好地满足 Cox 比例风险模型的基本前提。与包含 meal.cal 和 ph.karno 的完整模型相比，简化模型在保留主要结论的同时改善了比例风险假设，因此可作为最终分析模型。
+
+## HR表
+
+```{R}
+summary(pool(fit_imp_final2), conf.int = TRUE, exponentiate = TRUE)
+```
+
+-   女性患者的死亡风险约为男性的 56.1%，即女性死亡风险显著低于男性。
+-   ECOG 每升高 1 分，死亡风险约增加 69.4%。
+
+# 最终模型
+
+## 最终 Cox 模型的 **森林图（forest plot）**
+
+```{r}
+hr_table <- summary(pool(fit_imp_final2), conf.int = TRUE, exponentiate = TRUE) %>%
+  transmute(
+    term,
+    HR = estimate,
+    CI_low = `2.5 %`,
+    CI_high = `97.5 %`,
+    p.value
+  ) %>%
+  mutate(
+    term = factor(term, levels = rev(c("wt.loss", "age", "sex", "ph.ecog")))
+  )
+
+ggplot(hr_table, aes(x = term, y = HR)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = CI_low, ymax = CI_high), width = 0.15) +
+  geom_hline(yintercept = 1, linetype = 2, color = "red") +
+  coord_flip() +
+  labs(
+    title = "最终 Cox 模型的 HR 森林图",
+    x = "变量",
+    y = "Hazard Ratio (95% CI)"
+  ) +
+  theme_bw(base_size = 14)
+```
+
+这张图怎么解释：
+
+-   点在 1 左边：保护作用（HR \< 1）
+
+-   点在 1 右边：风险升高（HR \> 1）
+
+-   误差线跨过 1：通常不显著
+
+## Kaplan-Meier 生存曲线：按 `sex` 分组
+
+```{r}
+lung_imp1 <- complete(imp, 1) %>%
+  mutate(
+    sex_label = factor(sex, levels = c(1, 2), labels = c("Male", "Female"))
+  )
+
+fit_sex <- survfit(Surv(time, status) ~ sex_label, data = lung_imp1)
+
+ggsurvplot(
+  fit_sex,
+  data = lung_imp1,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = TRUE,
+  palette = c("#E7B800", "#2E9FDF"),
+  ggtheme = theme_classic(),
+  title = "按性别分组的 Kaplan-Meier 生存曲线",
+  xlab = "随访时间",
+  ylab = "生存概率",
+  legend.title = "性别")
+```
+
+## Kaplan-Meier 生存曲线：按 `ph.ecog` 分组
+
+```{r}
+lung_imp1 <- complete(imp, 1) %>%
+  mutate(
+    ecog_group = case_when(
+      ph.ecog == 0 ~ "0",
+      ph.ecog == 1 ~ "1",
+      ph.ecog >= 2 ~ "2+",
+      TRUE ~ NA_character_
+    ),
+    ecog_group = factor(ecog_group, levels = c("0", "1", "2+"))
+  )
+
+fit_ecog <- survfit(Surv(time, status) ~ ecog_group, data = lung_imp1)
+
+ggsurvplot(
+  fit_ecog,
+  data = lung_imp1,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = TRUE,
+  ggtheme = theme_classic(),
+  title = "按 ECOG 分组的 Kaplan-Meier 生存曲线",
+  xlab = "随访时间",
+  ylab = "生存概率",
+  legend.title = "ECOG 分组"
+)
+```
+
+## 多重插补 PH 检验结果
+
+```{r}
+ph_plot_data <- ph_summary_final2 %>%
+  mutate(
+    term = factor(term, levels = rev(term)),
+    label = paste0("n_sig = ", n_sig)
+  )
+
+ggplot(ph_plot_data, aes(y = term)) +
+  geom_vline(
+    xintercept = 0.05,
+    linetype = 2,
+    color = "red"
+  ) +
+  geom_linerange(
+    aes(xmin = min_p, xmax = max_p),
+    linewidth = 1
+  ) +
+  geom_point(
+    aes(x = median_p),
+    size = 3
+  ) +
+  geom_text(
+    aes(x = max_p, label = label),
+    hjust = -0.1,
+    size = 4
+  ) +
+  labs(
+    title = "最终模型的多重插补 PH 假设检验汇总",
+    subtitle = "横线表示各插补数据集 p 值范围，点表示中位数 p 值",
+    x = "PH 检验 p 值",
+    y = "变量"
+  ) +
+  coord_cartesian(xlim = c(0, max(ph_plot_data$max_p) * 1.2)) +
+  theme_bw(base_size = 14)
+```

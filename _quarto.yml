@@ -1,0 +1,57 @@
+project:
+  type: website
+  resources:
+    - assets/**
+
+website:
+  title: "Blog"
+  navbar:
+    left:
+      - text: "首页"
+        href: index.qmd
+
+      - text: "统计学"
+        menu:
+          - text: "统计学基础"
+            href: statistics.qmd
+          - text: "统计建模"
+            href: modeling.qmd
+          - text: "生存分析"
+            href: survival.qmd
+
+      - text: "编程"
+        menu:
+          - text: "R 语言"
+            href: r.qmd
+          - text: "Python"
+            href: python.qmd
+
+      - text: "专题"
+        menu:
+          - text: "因果推断"
+            href: causal.qmd
+          - text: "数学建模"
+            href: math-modeling.qmd
+
+      - text: "日志"
+        href: journal.qmd
+
+      - text: "哲学"
+        menu: 
+          - text : "阿尔都塞"
+            href : althusser.qmd
+          - text : "柏拉图"
+            href : philosophy.qmd
+
+    right:
+      - text: "About"
+        href: about.qmd
+      - icon: github
+        href: https://github.com/eros-prc
+format:
+  html:
+    theme: cosmo
+    css: assets/css/styles.css
+    toc: true
+    include-after-body: assets/js/site-widgets-loader.html
+
